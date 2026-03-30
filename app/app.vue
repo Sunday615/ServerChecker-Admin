@@ -13,14 +13,14 @@ useHead({
   }
 })
 
-const title = 'Server Check Portal'
-const description = 'Unified monitoring portal for service checks, web checks, reports, and manual checker runs.'
+const title = 'Server Checker Control Center'
+const description = 'Operations portal for run history, service health, web monitoring, reports, and manual checker execution.'
 
 const navItems = [
-  { label: 'Overview', to: '/' },
-  { label: 'Runs', to: '/runs' },
-  { label: 'Services', to: '/services' },
-  { label: 'Web Checks', to: '/web-checks' },
+  { label: 'Dashboard', to: '/' },
+  { label: 'Run History', to: '/runs' },
+  { label: 'Service Health', to: '/services' },
+  { label: 'Web Monitor', to: '/web-checks' },
   { label: 'Reports', to: '/reports' }
 ]
 
@@ -43,6 +43,16 @@ usePortalMotion(shellRef)
       ref="shellRef"
       class="portal-shell"
     >
+      <div class="portal-statusbar">
+        <div class="portal-statusbar__inner">
+          <div class="portal-statusbar__meta">
+            <span class="portal-chip">Custom Portal</span>
+            <span class="portal-statusbar__text">Nuxt portal linked to Python checker and MySQL history</span>
+          </div>
+          <span class="portal-statusbar__text">Manual run, report review, and live status in one place</span>
+        </div>
+      </div>
+
       <header class="portal-header">
         <div class="portal-header__inner">
           <NuxtLink
@@ -50,9 +60,10 @@ usePortalMotion(shellRef)
             class="portal-brand motion-brand"
           >
             <span class="portal-brand__mark motion-brand-mark">SC</span>
-            <span>
-              <span class="portal-brand__title">Server Check Portal</span>
-              <span class="portal-brand__subtitle">Nuxt dashboard for service and web reports</span>
+            <span class="portal-stack">
+              <span class="portal-kicker">Monitoring workspace</span>
+              <span class="portal-brand__title">Server Checker Control Center</span>
+              <span class="portal-brand__subtitle">Custom operations dashboard for service checks, web checks, and report artifacts</span>
             </span>
           </NuxtLink>
 

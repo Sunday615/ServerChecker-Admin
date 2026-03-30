@@ -1,6 +1,7 @@
 {
-  "name": "ServerCheck",
+  "name": "server-check-portal",
   "private": true,
+  "description": "Custom Nuxt operations portal for Python server-checker runs, service health, web monitoring, and reports.",
   "type": "module",
   "scripts": {
     "build": "nuxt build",

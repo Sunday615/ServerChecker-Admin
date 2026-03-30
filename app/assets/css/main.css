@@ -40,6 +40,49 @@ a {
   min-height: 100vh;
 }
 
+.portal-statusbar {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(3, 10, 17, 0.78);
+}
+
+.portal-statusbar__inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0.7rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.portal-statusbar__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.portal-statusbar__text {
+  color: #93aea5;
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+}
+
+.portal-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(52, 211, 153, 0.24);
+  background: rgba(16, 185, 129, 0.12);
+  color: #9df4ca;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .portal-header {
   position: sticky;
   top: 0;
@@ -61,9 +104,21 @@ a {
 
 .portal-brand {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.9rem;
   color: #f8fffd;
+}
+
+.portal-stack {
+  display: inline-flex;
+  flex-direction: column;
+}
+
+.portal-kicker {
+  color: #74f2ba;
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .portal-brand__mark {
@@ -83,15 +138,17 @@ a {
 .portal-brand__title {
   display: block;
   font-family: 'Space Grotesk', sans-serif;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 700;
   letter-spacing: 0.01em;
+  margin-top: 0.12rem;
 }
 
 .portal-brand__subtitle {
   display: block;
   color: #98b4aa;
   font-size: 0.84rem;
+  max-width: 34rem;
 }
 
 .portal-nav {
@@ -568,6 +625,7 @@ a {
 }
 
 @media (max-width: 720px) {
+  .portal-statusbar__inner,
   .portal-main,
   .portal-header__inner {
     padding-left: 1rem;
