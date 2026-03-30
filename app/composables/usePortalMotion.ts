@@ -2,6 +2,7 @@ import { gsap } from 'gsap'
 
 export const usePortalMotion = (root: Ref<HTMLElement | null>) => {
   const route = useRoute()
+  let floatingTween: gsap.core.Tween | null = null
 
   const runMotion = async () => {
     if (!import.meta.client) {
@@ -19,13 +20,14 @@ export const usePortalMotion = (root: Ref<HTMLElement | null>) => {
     const hero = select('.page-hero')
     const topbar = select('.topbar')
     const stats = select('.stat-card')
-    const panels = select('.panel-card, .issue-card, .info-card')
+    const panels = select('.panel-card, .issue-card, .info-card, .timeline-item, .rail-tag, .coverage-segment, .action-card')
     const nav = select('.sidebar-nav__link')
-    const runPanel = select('.run-panel')
+    const runPanel = select('.run-panel, .topbar-run')
     const brand = select('.brand-block')
-    const ornaments = select('.layout-orb, .layout-beam, .layout-grid')
+    const ornaments = select('.layout-orb, .layout-beam, .layout-grid, .layout-capsule')
 
     gsap.killTweensOf([...hero, ...topbar, ...stats, ...panels, ...nav, ...runPanel, ...brand, ...ornaments])
+    floatingTween?.kill()
 
     gsap.set([...hero, ...topbar, ...runPanel, ...brand], {
       y: 18,
@@ -100,11 +102,30 @@ export const usePortalMotion = (root: Ref<HTMLElement | null>) => {
         stagger: 0.05,
         duration: 0.52
       }, 0.28)
+
+    const floatingCapsules = select('.layout-capsule')
+
+    if (floatingCapsules.length > 0) {
+      floatingTween = gsap.to(floatingCapsules, {
+        y: '-=18',
+        x: '+=10',
+        rotation: 7,
+        duration: 3.4,
+        ease: 'sine.inOut',
+        stagger: 0.16,
+        repeat: -1,
+        yoyo: true
+      })
+    }
   }
 
   onMounted(runMotion)
 
   watch(() => route.fullPath, () => {
     runMotion()
+  })
+
+  onBeforeUnmount(() => {
+    floatingTween?.kill()
   })
 }

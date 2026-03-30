@@ -3,20 +3,26 @@ type LatestRun = null | {
   run_key: string
   generated_at: string
   overall_status: string
-  total_hosts: number
-  total_services: number
-  total_failed: number
-  total_web_failed: number
+  total_hosts: number | string
+  total_services: number | string
+  total_passed: number | string
+  total_failed: number | string
+  total_web_checks: number | string
+  total_web_passed: number | string
+  total_web_failed: number | string
 }
 
 type RecentRun = {
   run_key: string
   generated_at: string
   overall_status: string
-  total_hosts: number
-  total_services: number
-  total_failed: number
-  total_web_failed: number
+  total_hosts: number | string
+  total_services: number | string
+  total_passed: number | string
+  total_failed: number | string
+  total_web_checks: number | string
+  total_web_passed: number | string
+  total_web_failed: number | string
 }
 
 type FailingSite = {
@@ -36,27 +42,27 @@ const props = defineProps<{
 }>()
 
 const trendChartRef = ref<HTMLElement | null>(null)
-const issueMixChartRef = ref<HTMLElement | null>(null)
-const failingSitesChartRef = ref<HTMLElement | null>(null)
 
 let echartsModule: EChartsModule | null = null
 let trendChart: EChartsInstance | null = null
-let issueMixChart: EChartsInstance | null = null
-let failingSitesChart: EChartsInstance | null = null
 let resizeObserver: ResizeObserver | null = null
 let themeRegistered = false
 
-const resizeCharts = () => {
-  trendChart?.resize()
-  issueMixChart?.resize()
-  failingSitesChart?.resize()
+const toNumber = (value: number | string | null | undefined) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
 }
 
 const chartSignature = computed(() => JSON.stringify({
   latestRun: props.latestRun?.run_key || '',
   failingServiceCount: props.failingServiceCount,
   failingWebCount: props.failingWebCount,
-  recentRuns: props.recentRuns.map(run => [run.run_key, run.total_failed, run.total_web_failed, run.generated_at]),
+  recentRuns: props.recentRuns.map(run => [
+    run.run_key,
+    run.generated_at,
+    run.total_failed,
+    run.total_web_failed
+  ]),
   failingSites: props.failingSites.map(site => [site.site_name, site.failing_services])
 }))
 
@@ -64,10 +70,20 @@ const totalOpenIssues = computed(() => props.failingServiceCount + props.failing
 
 const latestRunNote = computed(() => {
   if (!props.latestRun) {
-    return 'Waiting for the first checker run.'
+    return 'Waiting for the first checker snapshot.'
   }
 
-  return `${props.latestRun.total_services} services across ${props.latestRun.total_hosts} hosts in the latest snapshot.`
+  const monitorCount = toNumber(props.latestRun.total_services) + toNumber(props.latestRun.total_web_checks)
+  return `${toNumber(props.latestRun.total_hosts)} hosts and ${monitorCount} live monitors in the latest run.`
+})
+
+const topHotspot = computed(() => {
+  const site = props.failingSites[0]
+  if (!site) {
+    return 'All monitored sites are stable.'
+  }
+
+  return `${site.site_name} has ${toNumber(site.failing_services)} active service issues.`
 })
 
 const formatChartDate = (value: string) => {
@@ -88,62 +104,46 @@ const formatChartDate = (value: string) => {
   }).format(date)
 }
 
-const toNumber = (value: number | string | null | undefined) => {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : 0
-}
-
-const axisLabelColor = '#62738d'
-const splitLineColor = '#e8eef8'
-const textColor = '#15253f'
-
 const registerTheme = (echarts: EChartsModule) => {
   if (themeRegistered) {
     return
   }
 
-  echarts.registerTheme('portalLight', {
-    color: ['#173a8a', '#4c66ad', '#8ba0cf', '#d6e1f5'],
+  echarts.registerTheme('portalCommand', {
+    color: ['#4f5dff', '#6db8ff', '#a4b4ff', '#dbe2ff'],
     backgroundColor: 'transparent',
     textStyle: {
-      color: textColor,
-      fontFamily: 'IBM Plex Sans, sans-serif'
+      color: '#1a2147',
+      fontFamily: 'Plus Jakarta Sans, sans-serif'
     },
     title: {
       textStyle: {
-        color: textColor,
-        fontWeight: 600
+        color: '#1a2147',
+        fontWeight: 700
       },
       subtextStyle: {
-        color: axisLabelColor
-      }
-    },
-    legend: {
-      textStyle: {
-        color: axisLabelColor
+        color: '#7f88ab'
       }
     },
     tooltip: {
       backgroundColor: '#ffffff',
-      borderColor: '#d9e3f2',
+      borderColor: '#dbe2ff',
       borderWidth: 1,
       textStyle: {
-        color: textColor
+        color: '#1a2147'
       }
     },
     categoryAxis: {
       axisLine: {
         lineStyle: {
-          color: '#d4deec'
+          color: '#d9e0f6'
         }
       },
       axisTick: {
-        lineStyle: {
-          color: '#d4deec'
-        }
+        show: false
       },
       axisLabel: {
-        color: axisLabelColor
+        color: '#7f88ab'
       },
       splitLine: {
         show: false
@@ -157,11 +157,11 @@ const registerTheme = (echarts: EChartsModule) => {
         show: false
       },
       axisLabel: {
-        color: axisLabelColor
+        color: '#7f88ab'
       },
       splitLine: {
         lineStyle: {
-          color: splitLineColor
+          color: '#ecf0fb'
         }
       }
     }
@@ -179,22 +179,20 @@ const getEcharts = async () => {
   return echartsModule
 }
 
-const initChart = (element: HTMLElement | null, current: EChartsInstance | null) => {
-  if (!element) {
+const ensureChart = (element: HTMLElement | null) => {
+  if (!element || !echartsModule) {
     return null
   }
 
-  if (current) {
-    return current
+  if (trendChart) {
+    return trendChart
   }
 
-  if (!echartsModule) {
-    return null
-  }
-
-  return echartsModule.init(element, 'portalLight', {
+  trendChart = echartsModule.init(element, 'portalCommand', {
     renderer: 'canvas'
   })
+
+  return trendChart
 }
 
 const trendOption = () => {
@@ -202,31 +200,48 @@ const trendOption = () => {
     .slice(0, 10)
     .reverse()
 
+  const preparedRuns = runs.length > 0
+    ? runs
+    : [
+        {
+          run_key: 'no-data',
+          generated_at: '',
+          overall_status: 'IDLE',
+          total_hosts: 0,
+          total_services: 0,
+          total_passed: 0,
+          total_failed: 0,
+          total_web_checks: 0,
+          total_web_passed: 0,
+          total_web_failed: 0
+        }
+      ]
+
   return {
-    animationDuration: 600,
+    animationDuration: 700,
+    animationEasing: 'cubicOut' as const,
     tooltip: {
       trigger: 'axis'
     },
     legend: {
-      top: 0,
+      top: 6,
       right: 0,
-      icon: 'circle'
+      icon: 'circle',
+      textStyle: {
+        color: '#6d7697'
+      }
     },
     grid: {
-      top: 48,
+      top: 56,
       left: 18,
-      right: 10,
-      bottom: 20,
+      right: 16,
+      bottom: 28,
       containLabel: true
     },
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: runs.map(run => formatChartDate(run.generated_at)),
-      axisLabel: {
-        color: axisLabelColor,
-        hideOverlap: true
-      }
+      data: preparedRuns.map(run => formatChartDate(run.generated_at))
     },
     yAxis: {
       type: 'value',
@@ -234,18 +249,18 @@ const trendOption = () => {
     },
     series: [
       {
-        name: 'Service issues',
+        name: 'Service alerts',
         type: 'line',
         smooth: true,
         symbol: 'circle',
-        symbolSize: 8,
-        data: runs.map(run => toNumber(run.total_failed)),
+        symbolSize: 9,
+        data: preparedRuns.map(run => toNumber(run.total_failed)),
         lineStyle: {
-          width: 3,
-          color: '#173a8a'
+          width: 4,
+          color: '#4f5dff'
         },
         itemStyle: {
-          color: '#173a8a',
+          color: '#4f5dff',
           borderColor: '#ffffff',
           borderWidth: 2
         },
@@ -257,25 +272,25 @@ const trendOption = () => {
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(23, 58, 138, 0.28)' },
-              { offset: 1, color: 'rgba(23, 58, 138, 0.03)' }
+              { offset: 0, color: 'rgba(79, 93, 255, 0.28)' },
+              { offset: 1, color: 'rgba(79, 93, 255, 0.02)' }
             ]
           }
         }
       },
       {
-        name: 'Web issues',
+        name: 'Web alerts',
         type: 'line',
         smooth: true,
         symbol: 'circle',
-        symbolSize: 7,
-        data: runs.map(run => toNumber(run.total_web_failed)),
+        symbolSize: 8,
+        data: preparedRuns.map(run => toNumber(run.total_web_failed)),
         lineStyle: {
           width: 3,
-          color: '#4c66ad'
+          color: '#6db8ff'
         },
         itemStyle: {
-          color: '#4c66ad',
+          color: '#6db8ff',
           borderColor: '#ffffff',
           borderWidth: 2
         },
@@ -287,8 +302,8 @@ const trendOption = () => {
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(76, 102, 173, 0.2)' },
-              { offset: 1, color: 'rgba(76, 102, 173, 0.02)' }
+              { offset: 0, color: 'rgba(109, 184, 255, 0.18)' },
+              { offset: 1, color: 'rgba(109, 184, 255, 0.02)' }
             ]
           }
         }
@@ -297,140 +312,8 @@ const trendOption = () => {
   }
 }
 
-const issueMixOption = () => {
-  const serviceIssues = props.failingServiceCount
-  const webIssues = props.failingWebCount
-  const hasIssues = serviceIssues + webIssues > 0
-  const seriesData = hasIssues
-    ? [
-        { value: serviceIssues, name: 'Service issues' },
-        { value: webIssues, name: 'Web issues' }
-      ]
-    : [
-        {
-          value: 1,
-          name: 'Stable',
-          itemStyle: {
-            color: '#d8e3f6'
-          }
-        }
-      ]
-
-  return {
-    animationDuration: 600,
-    tooltip: {
-      trigger: 'item'
-    },
-    legend: {
-      bottom: 0,
-      left: 'center',
-      icon: 'circle'
-    },
-    graphic: [
-      {
-        type: 'text',
-        left: 'center',
-        top: '38%',
-        style: {
-          text: hasIssues ? `${totalOpenIssues.value}\nopen issues` : 'Stable\nlatest run',
-          textAlign: 'center',
-          fill: textColor,
-          fontSize: 16,
-          fontWeight: 600,
-          lineHeight: 24,
-          fontFamily: 'IBM Plex Sans, sans-serif'
-        }
-      }
-    ],
-    series: [
-      {
-        type: 'pie',
-        radius: ['58%', '76%'],
-        center: ['50%', '42%'],
-        avoidLabelOverlap: true,
-        label: {
-          show: false
-        },
-        emphasis: {
-          scale: false
-        },
-        itemStyle: {
-          borderColor: '#ffffff',
-          borderWidth: 4
-        },
-        data: seriesData
-      }
-    ]
-  }
-}
-
-const failingSitesOption = () => {
-  const sites = [...props.failingSites]
-    .slice(0, 6)
-    .map(site => ({
-      name: site.site_name,
-      value: toNumber(site.failing_services)
-    }))
-
-  const preparedSites = sites.length > 0 ? sites : [{ name: 'All clear', value: 0 }]
-  const maxValue = Math.max(...preparedSites.map(site => site.value), 1)
-
-  return {
-    animationDuration: 600,
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'shadow'
-      }
-    },
-    grid: {
-      top: 12,
-      left: 12,
-      right: 12,
-      bottom: 8,
-      containLabel: true
-    },
-    xAxis: {
-      type: 'value',
-      max: maxValue,
-      minInterval: 1
-    },
-    yAxis: {
-      type: 'category',
-      inverse: true,
-      data: preparedSites.map(site => site.name),
-      axisTick: {
-        show: false
-      }
-    },
-    series: [
-      {
-        type: 'bar',
-        data: preparedSites.map(site => site.value),
-        barWidth: 14,
-        itemStyle: {
-          borderRadius: [999, 999, 999, 999],
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 1,
-            y2: 0,
-            colorStops: [
-              { offset: 0, color: '#173a8a' },
-              { offset: 1, color: '#7c95d8' }
-            ]
-          }
-        },
-        label: {
-          show: true,
-          position: 'right',
-          color: axisLabelColor,
-          formatter: '{c}'
-        }
-      }
-    ]
-  }
+const resizeChart = () => {
+  trendChart?.resize()
 }
 
 const renderCharts = async () => {
@@ -441,24 +324,16 @@ const renderCharts = async () => {
   await nextTick()
   await getEcharts()
 
-  trendChart = initChart(trendChartRef.value, trendChart)
-  issueMixChart = initChart(issueMixChartRef.value, issueMixChart)
-  failingSitesChart = initChart(failingSitesChartRef.value, failingSitesChart)
+  const chart = ensureChart(trendChartRef.value)
+  chart?.setOption(trendOption(), true)
+  resizeChart()
 
-  trendChart?.setOption(trendOption(), true)
-  issueMixChart?.setOption(issueMixOption(), true)
-  failingSitesChart?.setOption(failingSitesOption(), true)
-
-  resizeCharts()
-
-  if (!resizeObserver) {
+  if (!resizeObserver && trendChartRef.value) {
     resizeObserver = new ResizeObserver(() => {
-      resizeCharts()
+      resizeChart()
     })
 
-    ;[trendChartRef.value, issueMixChartRef.value, failingSitesChartRef.value]
-      .filter((element): element is HTMLElement => Boolean(element))
-      .forEach(element => resizeObserver?.observe(element))
+    resizeObserver.observe(trendChartRef.value)
   }
 }
 
@@ -467,12 +342,7 @@ const disposeCharts = () => {
   resizeObserver = null
 
   trendChart?.dispose()
-  issueMixChart?.dispose()
-  failingSitesChart?.dispose()
-
   trendChart = null
-  issueMixChart = null
-  failingSitesChart = null
 }
 
 watch(chartSignature, () => {
@@ -481,31 +351,33 @@ watch(chartSignature, () => {
 
 onMounted(() => {
   renderCharts()
-  window.addEventListener('resize', resizeCharts)
+  window.addEventListener('resize', resizeChart)
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', resizeCharts)
+  window.removeEventListener('resize', resizeChart)
   disposeCharts()
 })
 </script>
 
 <template>
-  <section class="dashboard-charts">
-    <article class="chart-card chart-card--trend">
+  <section class="dashboard-analytics">
+    <article class="panel-card chart-card chart-card--trend">
       <div class="chart-card__header">
         <div>
-          <span class="section-kicker">Trends</span>
-          <h2 class="chart-card__title">
-            Failure trend
+          <span class="section-kicker">Incident Trend</span>
+          <h2 class="panel-card__title">
+            Alerts across recent checker runs
           </h2>
           <p class="chart-card__note">
-            Service and web issues from the last 10 checker runs.
+            {{ latestRunNote }}
           </p>
         </div>
 
-        <div class="chart-card__meta">
-          {{ latestRunNote }}
+        <div class="chart-card__summary">
+          <span>Open alerts</span>
+          <strong>{{ totalOpenIssues }}</strong>
+          <p>{{ topHotspot }}</p>
         </div>
       </div>
 
@@ -514,45 +386,5 @@ onBeforeUnmount(() => {
         class="chart-card__canvas chart-card__canvas--lg"
       />
     </article>
-
-    <div class="dashboard-charts__stack">
-      <article class="chart-card">
-        <div class="chart-card__header">
-          <div>
-            <span class="section-kicker">Current mix</span>
-            <h2 class="chart-card__title">
-              Active issues
-            </h2>
-            <p class="chart-card__note">
-              Latest snapshot split between service and web monitoring.
-            </p>
-          </div>
-        </div>
-
-        <div
-          ref="issueMixChartRef"
-          class="chart-card__canvas"
-        />
-      </article>
-
-      <article class="chart-card">
-        <div class="chart-card__header">
-          <div>
-            <span class="section-kicker">Site ranking</span>
-            <h2 class="chart-card__title">
-              Failing sites
-            </h2>
-            <p class="chart-card__note">
-              Sites with the most open service issues right now.
-            </p>
-          </div>
-        </div>
-
-        <div
-          ref="failingSitesChartRef"
-          class="chart-card__canvas chart-card__canvas--sm"
-        />
-      </article>
-    </div>
   </section>
 </template>

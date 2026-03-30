@@ -11,6 +11,11 @@ type TriggerState = {
   checkerRoot: string
 }
 
+const emit = defineEmits<{
+  completed: []
+  triggered: []
+}>()
+
 const errorMessage = ref('')
 const isSubmitting = ref(false)
 const { formatDate } = usePortalUtils()
@@ -49,6 +54,12 @@ watch(() => state.value?.status, () => {
     syncPolling()
   }
 }, { immediate: true })
+
+watch(() => state.value?.status, (status, previous) => {
+  if (previous === 'RUNNING' && status && status !== 'RUNNING') {
+    emit('completed')
+  }
+})
 
 onBeforeUnmount(() => {
   if (pollTimer) {
@@ -97,6 +108,7 @@ const triggerRun = async () => {
       method: 'POST'
     })
     await refresh()
+    emit('triggered')
   }
   catch (error: any) {
     errorMessage.value = error?.data?.statusMessage || error?.message || 'Unable to start checker run.'
