@@ -82,9 +82,13 @@ usePortalMotion(shellRef)
             </p>
           </div>
 
-          <div class="topbar__signal">
-            <span class="topbar__signal-label">Route</span>
-            <strong class="topbar__signal-value">{{ route.path }}</strong>
+          <div class="topbar__side">
+            <PortalRunQuickButton />
+
+            <div class="topbar__signal">
+              <span class="topbar__signal-label">Route</span>
+              <strong class="topbar__signal-value">{{ route.path }}</strong>
+            </div>
           </div>
         </header>
 
