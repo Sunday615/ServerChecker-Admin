@@ -12,8 +12,8 @@ useHead({
 })
 
 useSeoMeta({
-  title: 'Server Checker Control Center',
-  description: 'Custom operations portal for checker runs, service health, web monitoring, and report artifacts.'
+  title: 'Server Checker Portal',
+  description: 'Clean operations portal for checker runs, service health, web monitoring, and report artifacts.'
 })
 
 const navItems = [
@@ -32,25 +32,31 @@ usePortalMotion(shellRef)
 
 <template>
   <UApp>
-    <div ref="shellRef" class="layout-shell">
+    <div
+      ref="shellRef"
+      class="layout-shell"
+    >
       <div class="layout-grid" />
       <div class="layout-orb layout-orb--cyan" />
       <div class="layout-orb layout-orb--blue" />
       <div class="layout-beam" />
 
       <aside class="layout-sidebar">
-        <NuxtLink to="/" class="brand-block">
+        <NuxtLink
+          to="/"
+          class="brand-block"
+        >
           <div class="brand-block__badge-wrap">
             <span class="brand-block__badge">SC</span>
             <span class="brand-block__pulse" />
           </div>
           <div>
-            <span class="section-kicker">Operations Portal</span>
+            <span class="section-kicker">Server Health Portal</span>
             <h1 class="brand-block__title">
               Server Checker
             </h1>
             <p class="brand-block__text">
-              Futuristic control surface for Python checks, MySQL snapshots, and artifact review.
+              Minimal workspace for Python checks, live health review, and report artifacts.
             </p>
           </div>
         </NuxtLink>
@@ -73,12 +79,12 @@ usePortalMotion(shellRef)
       <div class="layout-main">
         <header class="topbar">
           <div class="topbar__copy">
-            <span class="section-kicker">Monitoring Workspace</span>
+            <span class="section-kicker">Operations Workspace</span>
             <h2 class="topbar__title">
-              Control Center
+              Main Dashboard
             </h2>
             <p class="topbar__text">
-              Watch live health, review failures, and open artifacts from a single operational deck.
+              Track health, review failures, and open artifacts from one clean control panel.
             </p>
           </div>
 

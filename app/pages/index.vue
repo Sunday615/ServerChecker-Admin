@@ -86,7 +86,10 @@ const { data, refresh } = await useFetch<SummaryMetric>('/api/dashboard/summary'
       </UButton>
     </section>
 
-    <div v-if="!data.databaseOnline && data.message" class="message-banner message-banner--warning">
+    <div
+      v-if="!data.databaseOnline && data.message"
+      class="message-banner message-banner--warning"
+    >
       {{ data.message }}
     </div>
 
@@ -113,6 +116,16 @@ const { data, refresh } = await useFetch<SummaryMetric>('/api/dashboard/summary'
       />
     </section>
 
+    <ClientOnly>
+      <PortalDashboardCharts
+        :latest-run="data.latestRun"
+        :recent-runs="data.recentRuns"
+        :failing-sites="data.failingSites"
+        :failing-service-count="data.failingServiceCount"
+        :failing-web-count="data.failingWebCount"
+      />
+    </ClientOnly>
+
     <section class="panel-grid">
       <article class="panel-card">
         <div class="panel-card__header">
@@ -126,7 +139,10 @@ const { data, refresh } = await useFetch<SummaryMetric>('/api/dashboard/summary'
           <PortalStatusPill :status="data.latestRun?.overall_status" />
         </div>
 
-        <div v-if="data.latestRun" class="kv-grid">
+        <div
+          v-if="data.latestRun"
+          class="kv-grid"
+        >
           <div class="kv-item">
             <span class="kv-item__label">Run key</span>
             <strong>{{ data.latestRun.run_key }}</strong>
@@ -145,7 +161,10 @@ const { data, refresh } = await useFetch<SummaryMetric>('/api/dashboard/summary'
           </div>
         </div>
 
-        <div v-else class="empty-box">
+        <div
+          v-else
+          class="empty-box"
+        >
           No run data available yet.
         </div>
       </article>
@@ -160,12 +179,22 @@ const { data, refresh } = await useFetch<SummaryMetric>('/api/dashboard/summary'
           </div>
         </div>
 
-        <div v-if="data.failingSites.length === 0" class="empty-box">
+        <div
+          v-if="data.failingSites.length === 0"
+          class="empty-box"
+        >
           No failing site groups right now.
         </div>
 
-        <div v-else class="stack-list">
-          <div v-for="site in data.failingSites" :key="site.site_name" class="stack-row">
+        <div
+          v-else
+          class="stack-list"
+        >
+          <div
+            v-for="site in data.failingSites"
+            :key="site.site_name"
+            class="stack-row"
+          >
             <div>
               <strong>{{ site.site_name }}</strong>
               <p>{{ site.failing_services }} failing services</p>
@@ -186,12 +215,22 @@ const { data, refresh } = await useFetch<SummaryMetric>('/api/dashboard/summary'
         </div>
       </div>
 
-      <div v-if="data.recentRuns.length === 0" class="empty-box">
+      <div
+        v-if="data.recentRuns.length === 0"
+        class="empty-box"
+      >
         No recent run history found.
       </div>
 
-      <div v-else class="card-grid card-grid--compact">
-        <article v-for="run in data.recentRuns" :key="run.run_key" class="info-card">
+      <div
+        v-else
+        class="card-grid card-grid--compact"
+      >
+        <article
+          v-for="run in data.recentRuns"
+          :key="run.run_key"
+          class="info-card"
+        >
           <div class="info-card__header">
             <div>
               <strong>{{ run.run_key }}</strong>
@@ -220,12 +259,22 @@ const { data, refresh } = await useFetch<SummaryMetric>('/api/dashboard/summary'
           </div>
         </div>
 
-        <div v-if="data.failingServices.length === 0" class="empty-box">
+        <div
+          v-if="data.failingServices.length === 0"
+          class="empty-box"
+        >
           No failing services.
         </div>
 
-        <div v-else class="card-grid">
-          <article v-for="item in data.failingServices" :key="item.service_result_id" class="issue-card">
+        <div
+          v-else
+          class="card-grid"
+        >
+          <article
+            v-for="item in data.failingServices"
+            :key="item.service_result_id"
+            class="issue-card"
+          >
             <div class="info-card__header">
               <div>
                 <strong>{{ item.service_name }}</strong>
@@ -234,7 +283,10 @@ const { data, refresh } = await useFetch<SummaryMetric>('/api/dashboard/summary'
               <PortalStatusPill :status="item.status" />
             </div>
 
-            <p v-if="item.connection_error" class="issue-card__message issue-card__message--error">
+            <p
+              v-if="item.connection_error"
+              class="issue-card__message issue-card__message--error"
+            >
               {{ item.connection_error }}
             </p>
 
@@ -278,12 +330,22 @@ const { data, refresh } = await useFetch<SummaryMetric>('/api/dashboard/summary'
           </div>
         </div>
 
-        <div v-if="data.failingWebChecks.length === 0" class="empty-box">
+        <div
+          v-if="data.failingWebChecks.length === 0"
+          class="empty-box"
+        >
           No failing web checks.
         </div>
 
-        <div v-else class="card-grid">
-          <article v-for="item in data.failingWebChecks" :key="item.web_result_id" class="issue-card">
+        <div
+          v-else
+          class="card-grid"
+        >
+          <article
+            v-for="item in data.failingWebChecks"
+            :key="item.web_result_id"
+            class="issue-card"
+          >
             <div class="info-card__header">
               <div>
                 <strong>{{ item.target_name }}</strong>
