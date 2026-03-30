@@ -91,8 +91,10 @@ const failingCount = computed(() => data.value.items.filter(item => item.status 
         <div class="action-row">
           <UButton
             v-if="item.web_report_html_path"
-            :to="artifactUrl(item.web_report_html_path)"
+            :href="artifactUrl(item.web_report_html_path)"
+            external
             target="_blank"
+            rel="noopener noreferrer"
             variant="soft"
             color="neutral"
             icon="i-lucide-file-text"
@@ -101,8 +103,10 @@ const failingCount = computed(() => data.value.items.filter(item => item.status 
           </UButton>
           <UButton
             v-if="item.screenshot_file"
-            :to="artifactUrl(item.screenshot_file)"
+            :href="artifactUrl(item.screenshot_file)"
+            external
             target="_blank"
+            rel="noopener noreferrer"
             variant="soft"
             color="neutral"
             icon="i-lucide-image"

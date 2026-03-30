@@ -80,8 +80,10 @@ const { data, refresh } = await useFetch<ReportsResponse>('/api/reports/latest',
 
       <div v-if="data.latestRun?.web_summary_report_path" class="action-row">
         <UButton
-          :to="artifactUrl(data.latestRun.web_summary_report_path)"
+          :href="artifactUrl(data.latestRun.web_summary_report_path)"
+          external
           target="_blank"
+          rel="noopener noreferrer"
           icon="i-lucide-file-text"
         >
           Open web summary
@@ -103,8 +105,10 @@ const { data, refresh } = await useFetch<ReportsResponse>('/api/reports/latest',
         <div class="action-row">
           <UButton
             v-if="report.report_html_path"
-            :to="artifactUrl(report.report_html_path)"
+            :href="artifactUrl(report.report_html_path)"
+            external
             target="_blank"
+            rel="noopener noreferrer"
             variant="soft"
             color="neutral"
             icon="i-lucide-file-text"
@@ -113,8 +117,10 @@ const { data, refresh } = await useFetch<ReportsResponse>('/api/reports/latest',
           </UButton>
           <UButton
             v-if="report.summary_screenshot_file"
-            :to="artifactUrl(report.summary_screenshot_file)"
+            :href="artifactUrl(report.summary_screenshot_file)"
+            external
             target="_blank"
+            rel="noopener noreferrer"
             variant="soft"
             color="neutral"
             icon="i-lucide-image"

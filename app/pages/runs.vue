@@ -104,8 +104,10 @@ const { data, refresh } = await useFetch<RunsResponse>('/api/runs', {
         <div class="action-row">
           <UButton
             v-if="run.web_summary_report_path"
-            :to="artifactUrl(run.web_summary_report_path)"
+            :href="artifactUrl(run.web_summary_report_path)"
+            external
             target="_blank"
+            rel="noopener noreferrer"
             variant="soft"
             color="neutral"
             icon="i-lucide-file-text"

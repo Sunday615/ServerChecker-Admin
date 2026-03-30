@@ -241,8 +241,10 @@ const { data, refresh } = await useFetch<SummaryMetric>('/api/dashboard/summary'
             <div class="action-row">
               <UButton
                 v-if="item.service_report_html_path"
-                :to="artifactUrl(item.service_report_html_path)"
+                :href="artifactUrl(item.service_report_html_path)"
+                external
                 target="_blank"
+                rel="noopener noreferrer"
                 variant="soft"
                 color="neutral"
                 icon="i-lucide-file-text"
@@ -251,8 +253,10 @@ const { data, refresh } = await useFetch<SummaryMetric>('/api/dashboard/summary'
               </UButton>
               <UButton
                 v-if="item.service_screenshot_file"
-                :to="artifactUrl(item.service_screenshot_file)"
+                :href="artifactUrl(item.service_screenshot_file)"
+                external
                 target="_blank"
+                rel="noopener noreferrer"
                 variant="soft"
                 color="neutral"
                 icon="i-lucide-image"
@@ -295,8 +299,10 @@ const { data, refresh } = await useFetch<SummaryMetric>('/api/dashboard/summary'
             <div class="action-row">
               <UButton
                 v-if="item.web_report_html_path"
-                :to="artifactUrl(item.web_report_html_path)"
+                :href="artifactUrl(item.web_report_html_path)"
+                external
                 target="_blank"
+                rel="noopener noreferrer"
                 variant="soft"
                 color="neutral"
                 icon="i-lucide-file-text"
@@ -305,8 +311,10 @@ const { data, refresh } = await useFetch<SummaryMetric>('/api/dashboard/summary'
               </UButton>
               <UButton
                 v-if="item.screenshot_file"
-                :to="artifactUrl(item.screenshot_file)"
+                :href="artifactUrl(item.screenshot_file)"
+                external
                 target="_blank"
+                rel="noopener noreferrer"
                 variant="soft"
                 color="neutral"
                 icon="i-lucide-image"
