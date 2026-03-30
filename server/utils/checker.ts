@@ -314,22 +314,61 @@ export const triggerCheckerRun = async () => {
   }
 }
 
-export const resolveArtifactPath = (requestedPath: string) => {
+const stripFileProtocol = (value: string) => value.replace(/^file:(\/\/\/?)?/i, '').trim()
+
+const outputRelativePath = (requestedPath: string) => {
+  const normalized = stripFileProtocol(requestedPath).replace(/\\/g, '/')
+  const marker = '/output/'
+  const lower = normalized.toLowerCase()
+  const markerIndex = lower.lastIndexOf(marker)
+
+  if (markerIndex === -1) {
+    return ''
+  }
+
+  return normalized.slice(markerIndex + marker.length)
+}
+
+const isInsideOutputRoot = (rootPath: string, candidatePath: string) => {
+  const relativePath = relative(rootPath, candidatePath)
+  return relativePath === ''
+    || (!relativePath.startsWith('..') && !isAbsolute(relativePath))
+}
+
+export const resolveArtifactCandidates = (requestedPath: string) => {
   const { checkerOutputRoot } = getCheckerPaths()
   const resolvedRoot = resolve(checkerOutputRoot)
-  const resolvedPath = resolve(requestedPath)
-  const relativePath = relative(resolvedRoot, resolvedPath)
-  const isInsideOutputRoot = relativePath === ''
-    || (!relativePath.startsWith('..') && !isAbsolute(relativePath))
+  const cleanedPath = stripFileProtocol(requestedPath)
+  const candidates = new Set<string>()
 
-  if (!isInsideOutputRoot) {
+  if (cleanedPath) {
+    candidates.add(resolve(cleanedPath))
+
+    if (!isAbsolute(cleanedPath)) {
+      const trimmed = cleanedPath.replace(/^output[\\/]+/i, '')
+      candidates.add(resolve(resolvedRoot, trimmed))
+    }
+
+    const relativeOutput = outputRelativePath(cleanedPath)
+    if (relativeOutput) {
+      candidates.add(resolve(resolvedRoot, relativeOutput))
+    }
+  }
+
+  const resolvedCandidates = Array.from(candidates).filter(candidate => isInsideOutputRoot(resolvedRoot, candidate))
+
+  if (resolvedCandidates.length === 0) {
     throw createError({
       statusCode: 400,
       statusMessage: 'Artifact path must be inside the checker output directory.'
     })
   }
 
-  return resolvedPath
+  return resolvedCandidates
+}
+
+export const resolveArtifactPath = (requestedPath: string) => {
+  return resolveArtifactCandidates(requestedPath)[0]
 }
 
 export const artifactMimeType = (filePath: string) => {
