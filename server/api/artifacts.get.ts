@@ -1,6 +1,7 @@
 import { access, readFile, readdir } from 'node:fs/promises'
+import { spawn } from 'node:child_process'
 import { getQuery, sendStream, setHeader } from 'h3'
-import { basename, dirname, resolve } from 'node:path'
+import { basename, dirname, relative, resolve } from 'node:path'
 import { artifactMimeType, createArtifactStream, getCheckerPaths, resolveArtifactCandidates } from '../utils/checker'
 
 const ABSOLUTE_OR_EXTERNAL_RE = /^(?:[a-z]+:|\/\/|#|\/)/i
@@ -80,6 +81,74 @@ const findArtifactBySearch = async (requestedPath: string) => {
   return fallbackByName
 }
 
+const pathExists = async (candidate: string) => {
+  try {
+    await access(candidate)
+    return true
+  }
+  catch {
+    return false
+  }
+}
+
+const findExistingCandidate = async (candidates: string[]) => {
+  for (const candidate of candidates) {
+    if (await pathExists(candidate)) {
+      return candidate
+    }
+  }
+
+  return ''
+}
+
+const deriveHtmlCandidatesForPng = (imagePath: string) => {
+  const { checkerOutputRoot } = getCheckerPaths()
+  const outputRoot = resolve(checkerOutputRoot)
+  const relativeImagePath = relative(outputRoot, resolve(imagePath)).replace(/\\/g, '/')
+  const candidates: string[] = []
+
+  if (relativeImagePath.startsWith('screenshots/services/')) {
+    const suffix = relativeImagePath.slice('screenshots/services/'.length).replace(/\.png$/i, '.html')
+    candidates.push(resolve(outputRoot, 'reports/services', suffix))
+  }
+
+  if (relativeImagePath.startsWith('webshots/')) {
+    const suffix = relativeImagePath.slice('webshots/'.length).replace(/\.png$/i, '.html')
+    candidates.push(resolve(outputRoot, 'web_reports', suffix))
+  }
+
+  if (relativeImagePath.startsWith('screenshots/')) {
+    const parts = relativeImagePath.split('/')
+    const site = parts[1] || ''
+    const fileName = parts.at(-1) || ''
+
+    if (site && fileName.endsWith(`__${site}__server_check_report.png`)) {
+      const htmlFileName = fileName.replace(`__${site}__server_check_report.png`, '__server_check_report.html')
+      candidates.push(resolve(outputRoot, 'reports', site, htmlFileName))
+    }
+  }
+
+  return Array.from(new Set(candidates))
+}
+
+const regeneratePngFromHtml = async (htmlPath: string, imagePath: string) => {
+  const config = useRuntimeConfig()
+  const { checkerRoot } = getCheckerPaths()
+  const pythonBin = String(config.checkerPythonBin || 'python').trim() || 'python'
+  const scriptPath = resolve(checkerRoot, 'tools', 'regenerate_screenshot.py')
+
+  return await new Promise<boolean>((resolvePromise) => {
+    const child = spawn(pythonBin, [scriptPath, htmlPath, imagePath], {
+      cwd: checkerRoot,
+      env: process.env,
+      stdio: ['ignore', 'ignore', 'pipe']
+    })
+
+    child.on('error', () => resolvePromise(false))
+    child.on('close', (code) => resolvePromise(code === 0))
+  })
+}
+
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const filePath = Array.isArray(query.path) ? query.path[0] : query.path
@@ -92,24 +161,27 @@ export default defineEventHandler(async (event) => {
   }
 
   const candidates = resolveArtifactCandidates(filePath)
-  let resolved = ''
-
-  for (const candidate of candidates) {
-    try {
-      await access(candidate)
-      resolved = candidate
-      break
-    }
-    catch {
-      // Try next candidate path.
-    }
-  }
+  let resolved = await findExistingCandidate(candidates)
 
   if (!resolved) {
     const searchedPath = await findArtifactBySearch(filePath)
 
     if (searchedPath) {
       resolved = searchedPath
+    }
+  }
+
+  if (!resolved && filePath.toLowerCase().endsWith('.png')) {
+    const targetImagePath = candidates[0] || ''
+    const htmlCandidates = deriveHtmlCandidatesForPng(targetImagePath || filePath)
+    const resolvedHtmlPath = await findExistingCandidate(htmlCandidates)
+
+    if (resolvedHtmlPath && targetImagePath) {
+      const regenerated = await regeneratePngFromHtml(resolvedHtmlPath, targetImagePath)
+
+      if (regenerated && await pathExists(targetImagePath)) {
+        resolved = targetImagePath
+      }
     }
   }
 
