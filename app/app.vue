@@ -92,42 +92,37 @@ usePortalMotion(portalRoot)
           <NuxtLink
             to="/"
             class="brand-block__logo"
+            aria-label="Server Checker home"
           >
-            <span>server</span>
-            <strong>checker</strong>
+            <span class="brand-block__badge">SC</span>
+            <span class="brand-block__wordmark">
+              <small>server</small>
+              <strong>checker</strong>
+            </span>
           </NuxtLink>
-
-          <p class="brand-block__copy">
-            Live command center for the Python runner and MySQL-backed monitoring results.
-          </p>
 
           <nav class="sidebar-nav">
             <NuxtLink
               v-for="item in navigation"
               :key="item.to"
               :to="item.to"
+              :title="item.label"
+              :aria-label="item.label"
               :class="['sidebar-nav__link', { 'is-active': route.path === item.to }]"
             >
               <span class="sidebar-nav__icon">
                 <UIcon :name="item.icon" />
               </span>
 
-              <span class="sidebar-nav__label">
-                <strong>{{ item.label }}</strong>
-                <small>{{ item.caption }}</small>
-              </span>
+              <span class="sidebar-nav__sr">{{ item.label }}</span>
             </NuxtLink>
           </nav>
 
-          <div class="sidebar-profile">
+          <div class="sidebar-profile" aria-hidden="true">
             <div class="sidebar-profile__avatar">
-              SC
+              PY
             </div>
-
-            <div class="sidebar-profile__meta">
-              <strong>Nuxt bridge</strong>
-              <span>Python + MySQL sync</span>
-            </div>
+            <span class="sidebar-profile__status" />
           </div>
         </aside>
 
