@@ -55,6 +55,19 @@ export const getCheckerPaths = (): CheckerPaths => {
   }
 }
 
+const checkerEnv = () => {
+  const config = useRuntimeConfig()
+
+  return {
+    ...process.env,
+    MYSQL_HOST: String(config.mysqlHost),
+    MYSQL_PORT: String(config.mysqlPort),
+    MYSQL_USER: String(config.mysqlUser),
+    MYSQL_PASSWORD: String(config.mysqlPassword ?? ''),
+    MYSQL_DATABASE: String(config.mysqlDatabase)
+  }
+}
+
 const ensureRuntimeDir = async (paths = getCheckerPaths()) => {
   await mkdir(paths.runtimeDir, { recursive: true })
 }
@@ -203,7 +216,7 @@ export const triggerCheckerRun = async () => {
 
   const child = spawn('bash', [paths.checkerRunScript], {
     cwd: paths.checkerRoot,
-    env: process.env,
+    env: checkerEnv(),
     stdio: ['ignore', 'pipe', 'pipe']
   })
 
