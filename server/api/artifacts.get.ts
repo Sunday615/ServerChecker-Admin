@@ -1,7 +1,7 @@
-import { access, readFile } from 'node:fs/promises'
+import { access, readFile, readdir } from 'node:fs/promises'
 import { getQuery, sendStream, setHeader } from 'h3'
-import { dirname, resolve } from 'node:path'
-import { artifactMimeType, createArtifactStream, resolveArtifactCandidates } from '../utils/checker'
+import { basename, dirname, resolve } from 'node:path'
+import { artifactMimeType, createArtifactStream, getCheckerPaths, resolveArtifactCandidates } from '../utils/checker'
 
 const ABSOLUTE_OR_EXTERNAL_RE = /^(?:[a-z]+:|\/\/|#|\/)/i
 
@@ -17,6 +17,67 @@ const rewriteHtmlArtifactLinks = (html: string, htmlPath: string) => {
 
     return `${attr}="${rewrittenUrl}"`
   })
+}
+
+const normalizePathForMatch = (value: string) => value.replace(/\\/g, '/').toLowerCase()
+
+const outputRelativeMatch = (value: string) => {
+  const normalized = normalizePathForMatch(value)
+  const marker = '/output/'
+  const markerIndex = normalized.lastIndexOf(marker)
+
+  if (markerIndex === -1) {
+    return ''
+  }
+
+  return normalized.slice(markerIndex + marker.length)
+}
+
+const findArtifactBySearch = async (requestedPath: string) => {
+  const { checkerOutputRoot } = getCheckerPaths()
+  const targetFileName = basename(requestedPath).toLowerCase()
+  const targetRelative = outputRelativeMatch(requestedPath)
+  const dirsToScan = [checkerOutputRoot]
+  let fallbackByName = ''
+
+  while (dirsToScan.length > 0) {
+    const currentDir = dirsToScan.shift()
+    if (!currentDir) {
+      continue
+    }
+
+    try {
+      const entries = await readdir(currentDir, { withFileTypes: true, encoding: 'utf8' })
+
+      for (const entry of entries) {
+        const fullPath = resolve(currentDir, entry.name)
+
+        if (entry.isDirectory()) {
+          dirsToScan.push(fullPath)
+          continue
+        }
+
+        if (!entry.isFile()) {
+          continue
+        }
+
+        const normalizedFullPath = normalizePathForMatch(fullPath)
+
+        if (targetRelative && normalizedFullPath.endsWith(targetRelative)) {
+          return fullPath
+        }
+
+        if (!fallbackByName && entry.name.toLowerCase() === targetFileName) {
+          fallbackByName = fullPath
+        }
+      }
+    }
+    catch {
+      continue
+    }
+  }
+
+  return fallbackByName
 }
 
 export default defineEventHandler(async (event) => {
@@ -41,6 +102,14 @@ export default defineEventHandler(async (event) => {
     }
     catch {
       // Try next candidate path.
+    }
+  }
+
+  if (!resolved) {
+    const searchedPath = await findArtifactBySearch(filePath)
+
+    if (searchedPath) {
+      resolved = searchedPath
     }
   }
 
