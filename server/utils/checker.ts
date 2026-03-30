@@ -38,11 +38,24 @@ const createDefaultState = (checkerRoot = '', command = ''): CheckerRunState => 
   checkerRoot
 })
 
+const missingCheckerConfigError = () => createError({
+  statusCode: 500,
+  statusMessage: 'Checker path config is missing. Set CHECKER_ROOT, CHECKER_RUN_SCRIPT, and CHECKER_OUTPUT_ROOT in your .env file.'
+})
+
 export const getCheckerPaths = (): CheckerPaths => {
   const config = useRuntimeConfig()
-  const checkerRoot = resolve(config.checkerRoot)
-  const checkerRunScript = resolve(config.checkerRunScript)
-  const checkerOutputRoot = resolve(config.checkerOutputRoot)
+  const rawCheckerRoot = String(config.checkerRoot || '').trim()
+  const rawCheckerRunScript = String(config.checkerRunScript || '').trim()
+  const rawCheckerOutputRoot = String(config.checkerOutputRoot || '').trim()
+
+  if (!rawCheckerRoot || !rawCheckerRunScript || !rawCheckerOutputRoot) {
+    throw missingCheckerConfigError()
+  }
+
+  const checkerRoot = resolve(rawCheckerRoot)
+  const checkerRunScript = resolve(rawCheckerRunScript)
+  const checkerOutputRoot = resolve(rawCheckerOutputRoot)
   const runtimeDir = resolve(checkerOutputRoot, 'runtime')
 
   return {
@@ -52,6 +65,35 @@ export const getCheckerPaths = (): CheckerPaths => {
     runtimeDir,
     stateFile: resolve(runtimeDir, 'web_trigger_state.json'),
     lockFile: resolve(runtimeDir, 'web_trigger.lock')
+  }
+}
+
+const checkerSpawn = (paths: CheckerPaths) => {
+  const config = useRuntimeConfig()
+  const checkerPythonBin = String(config.checkerPythonBin || 'python').trim() || 'python'
+  const runScript = paths.checkerRunScript
+  const normalizedRunScript = runScript.toLowerCase()
+
+  if (normalizedRunScript.endsWith('.py')) {
+    return {
+      command: checkerPythonBin,
+      args: [runScript],
+      display: `${checkerPythonBin} ${runScript}`
+    }
+  }
+
+  if (normalizedRunScript.endsWith('.cmd') || normalizedRunScript.endsWith('.bat')) {
+    return {
+      command: runScript,
+      args: [],
+      display: runScript
+    }
+  }
+
+  return {
+    command: 'bash',
+    args: [runScript],
+    display: `bash ${runScript}`
   }
 }
 
@@ -189,6 +231,7 @@ const clearLock = async (paths = getCheckerPaths()) => {
 
 export const triggerCheckerRun = async () => {
   const paths = getCheckerPaths()
+  const spawnConfig = checkerSpawn(paths)
 
   if (await hasActiveLock(paths)) {
     return {
@@ -208,13 +251,13 @@ export const triggerCheckerRun = async () => {
     pid: null,
     stdoutTail: '',
     stderrTail: '',
-    command: paths.checkerRunScript,
+    command: spawnConfig.display,
     checkerRoot: paths.checkerRoot
   }
 
   await writeCheckerRunState(startingState, paths)
 
-  const child = spawn('bash', [paths.checkerRunScript], {
+  const child = spawn(spawnConfig.command, spawnConfig.args, {
     cwd: paths.checkerRoot,
     env: checkerEnv(),
     stdio: ['ignore', 'pipe', 'pipe']
@@ -245,7 +288,7 @@ export const triggerCheckerRun = async () => {
       pid: null,
       stdoutTail,
       stderrTail: appendTail(stderrTail, `\n${error.message}`),
-      command: paths.checkerRunScript,
+      command: spawnConfig.display,
       checkerRoot: paths.checkerRoot
     }, paths)
   })
@@ -260,7 +303,7 @@ export const triggerCheckerRun = async () => {
       pid: null,
       stdoutTail,
       stderrTail,
-      command: paths.checkerRunScript,
+      command: spawnConfig.display,
       checkerRoot: paths.checkerRoot
     }, paths)
   })
