@@ -7,15 +7,11 @@ const normalized = computed(() => (props.status || 'UNKNOWN').toUpperCase())
 
 const tone = computed(() => {
   if (normalized.value === 'PASS' || normalized.value === 'COMPLETED') {
-    return 'pass'
+    return 'ok'
   }
 
   if (normalized.value === 'RUNNING') {
     return 'running'
-  }
-
-  if (normalized.value === 'IDLE') {
-    return 'idle'
   }
 
   if (
@@ -27,12 +23,16 @@ const tone = computed(() => {
     return 'fail'
   }
 
+  if (normalized.value === 'IDLE') {
+    return 'idle'
+  }
+
   return 'unknown'
 })
 </script>
 
 <template>
-  <span :class="['status-pill', `status-pill--${tone}`]">
+  <span :class="['status-token', `status-token--${tone}`]">
     {{ normalized }}
   </span>
 </template>

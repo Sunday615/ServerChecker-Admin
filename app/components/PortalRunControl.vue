@@ -11,14 +11,9 @@ type TriggerState = {
   checkerRoot: string
 }
 
-const props = withDefaults(defineProps<{
-  compact?: boolean
-}>(), {
-  compact: false
-})
-
 const errorMessage = ref('')
 const isSubmitting = ref(false)
+const { formatDate } = usePortalUtils()
 
 const { data: state, refresh } = await useFetch<TriggerState>('/api/runs/active', {
   default: () => ({
@@ -34,16 +29,16 @@ const { data: state, refresh } = await useFetch<TriggerState>('/api/runs/active'
   })
 })
 
-let pollingTimer: ReturnType<typeof setInterval> | null = null
+let pollTimer: ReturnType<typeof setInterval> | null = null
 
-const schedulePolling = () => {
-  if (pollingTimer) {
-    clearInterval(pollingTimer)
-    pollingTimer = null
+const syncPolling = () => {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
   }
 
   if (state.value?.status === 'RUNNING') {
-    pollingTimer = setInterval(() => {
+    pollTimer = setInterval(() => {
       refresh()
     }, 3000)
   }
@@ -51,37 +46,41 @@ const schedulePolling = () => {
 
 watch(() => state.value?.status, () => {
   if (import.meta.client) {
-    schedulePolling()
+    syncPolling()
   }
 }, { immediate: true })
 
 onBeforeUnmount(() => {
-  if (pollingTimer) {
-    clearInterval(pollingTimer)
+  if (pollTimer) {
+    clearInterval(pollTimer)
   }
 })
 
-const hint = computed(() => {
+const detailText = computed(() => {
   if (state.value?.status === 'RUNNING') {
-    return 'Checker is running from the existing Python project.'
+    return state.value.startedAt
+      ? `Started ${formatDate(state.value.startedAt)}`
+      : 'Run is active'
   }
 
   if (state.value?.finishedAt) {
-    return `Last finished at ${new Intl.DateTimeFormat('en-GB', {
-      dateStyle: 'medium',
-      timeStyle: 'short'
-    }).format(new Date(state.value.finishedAt))}`
+    return `Last finished ${formatDate(state.value.finishedAt)}`
   }
 
-  return 'Trigger the same run flow as scripts/run_once.sh'
+  return 'Ready to trigger the Python checker'
 })
 
-const failureHint = computed(() => {
-  if (state.value?.status !== 'FAILED' || !state.value.stderrTail) {
+const failureText = computed(() => {
+  if (state.value?.status !== 'FAILED') {
     return ''
   }
 
-  return state.value.stderrTail
+  const raw = state.value.stderrTail || state.value.stdoutTail || ''
+  if (!raw) {
+    return 'Run ended with an error.'
+  }
+
+  return raw
     .split('\n')
     .map(line => line.trim())
     .filter(Boolean)
@@ -100,7 +99,7 @@ const triggerRun = async () => {
     await refresh()
   }
   catch (error: any) {
-    errorMessage.value = error?.data?.statusMessage || error?.message || 'Unable to trigger checker run.'
+    errorMessage.value = error?.data?.statusMessage || error?.message || 'Unable to start checker run.'
   }
   finally {
     isSubmitting.value = false
@@ -109,41 +108,38 @@ const triggerRun = async () => {
 </script>
 
 <template>
-  <div :class="['run-widget', compact && 'run-widget--compact']">
-    <div class="run-widget__meta">
-      <span class="run-widget__label">Checker status</span>
-      <StatusBadge :status="state.status" />
+  <section class="run-panel">
+    <div class="run-panel__header">
+      <div>
+        <span class="section-kicker">Manual Run</span>
+        <h2 class="run-panel__title">
+          Trigger Checker
+        </h2>
+      </div>
+
+      <PortalStatusPill :status="state.status" />
     </div>
 
-    <p
-      v-if="!compact"
-      class="run-widget__hint"
-    >
-      {{ hint }}
+    <p class="run-panel__text">
+      {{ detailText }}
     </p>
 
     <UButton
       icon="i-lucide-play"
+      color="primary"
       :loading="isSubmitting || state.status === 'RUNNING'"
       :disabled="isSubmitting || state.status === 'RUNNING'"
-      color="primary"
       @click="triggerRun"
     >
       {{ state.status === 'RUNNING' ? 'Running check...' : 'Run Check' }}
     </UButton>
 
-    <p
-      v-if="errorMessage"
-      class="run-widget__error"
-    >
+    <p v-if="errorMessage" class="run-panel__error">
       {{ errorMessage }}
     </p>
 
-    <p
-      v-else-if="failureHint"
-      class="run-widget__error"
-    >
-      {{ failureHint }}
+    <p v-else-if="failureText" class="run-panel__error">
+      {{ failureText }}
     </p>
-  </div>
+  </section>
 </template>

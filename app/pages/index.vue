@@ -46,6 +46,8 @@ type SummaryMetric = {
   message: string
 }
 
+const { formatDate, artifactUrl } = usePortalUtils()
+
 const { data, refresh } = await useFetch<SummaryMetric>('/api/dashboard/summary', {
   default: () => ({
     latestRun: null,
@@ -59,349 +61,262 @@ const { data, refresh } = await useFetch<SummaryMetric>('/api/dashboard/summary'
     message: ''
   })
 })
-
-const artifactUrl = (filePath?: string) => {
-  if (!filePath) {
-    return '#'
-  }
-
-  return `/api/artifacts?path=${encodeURIComponent(filePath)}`
-}
-
-const formatDate = (value?: string) => {
-  if (!value) {
-    return '-'
-  }
-
-  return new Intl.DateTimeFormat('en-GB', {
-    dateStyle: 'medium',
-    timeStyle: 'short'
-  }).format(new Date(value))
-}
 </script>
 
 <template>
   <div class="page-stack">
-    <section class="hero-panel motion-hero">
-      <div class="hero-panel__header">
-        <div>
-          <div class="eyebrow">
-            <UIcon name="i-lucide-activity" />
-            Live monitoring workspace
-          </div>
-          <h1 class="hero-title">
-            Unified control room for service checks and web reports
-          </h1>
-          <p class="hero-description">
-            This portal reads the same MySQL-backed run history created by <code>server-checker</code>,
-            gives you one place to review failures, inspect artifacts, and launch a new checker run.
-          </p>
-        </div>
-
-        <RunCheckButton />
+    <section class="page-hero">
+      <div>
+        <span class="section-kicker">Overview</span>
+        <h1 class="page-title">
+          Monitoring dashboard
+        </h1>
+        <p class="page-copy">
+          See the latest checker run, current failing services, web issues, and report artifacts from one control panel.
+        </p>
       </div>
 
-      <div class="hero-actions">
-        <UButton
-          icon="i-lucide-refresh-cw"
-          color="neutral"
-          variant="subtle"
-          @click="refresh()"
-        >
-          Refresh dashboard
-        </UButton>
-        <UButton
-          to="/services"
-          icon="i-lucide-server"
-          variant="subtle"
-        >
-          View services
-        </UButton>
-        <UButton
-          to="/reports"
-          icon="i-lucide-file-bar-chart"
-          variant="subtle"
-        >
-          Browse reports
-        </UButton>
-      </div>
+      <UButton
+        icon="i-lucide-refresh-cw"
+        color="neutral"
+        variant="soft"
+        @click="refresh()"
+      >
+        Refresh
+      </UButton>
     </section>
 
-    <div
-      v-if="!data.databaseOnline && data.message"
-      class="alert-banner"
-    >
+    <div v-if="!data.databaseOnline && data.message" class="message-banner message-banner--warning">
       {{ data.message }}
     </div>
 
-    <section class="metrics-grid">
-      <MetricCard
-        class="motion-card"
-        label="Last run"
+    <section class="stats-grid">
+      <PortalStatCard
+        label="Latest Run"
         :value="data.latestRun?.run_key || 'No data'"
         :hint="formatDate(data.latestRun?.generated_at)"
       />
-      <MetricCard
-        class="motion-card"
-        label="Failing services"
+      <PortalStatCard
+        label="Failing Services"
         :value="String(data.failingServiceCount)"
-        hint="Current latest status across all services"
+        hint="Latest service snapshot"
       />
-      <MetricCard
-        class="motion-card"
-        label="Failing web checks"
+      <PortalStatCard
+        label="Failing Web Checks"
         :value="String(data.failingWebCount)"
-        hint="Current latest screenshot and login flows"
+        hint="Latest web snapshot"
       />
-      <MetricCard
-        class="motion-card"
-        label="Last run result"
+      <PortalStatCard
+        label="Last Result"
         :value="data.latestRun?.overall_status || 'UNKNOWN'"
-        :hint="data.latestRun ? `${data.latestRun.total_failed} service fails / ${data.latestRun.total_web_failed} web fails` : 'Waiting for first run'"
+        :hint="data.latestRun ? `${data.latestRun.total_failed} service issues / ${data.latestRun.total_web_failed} web issues` : 'Waiting for first run'"
       />
     </section>
 
-    <section class="content-grid">
-      <div class="panel motion-panel">
-        <div class="panel__header">
+    <section class="panel-grid">
+      <article class="panel-card">
+        <div class="panel-card__header">
           <div>
-            <h2 class="panel__title">
-              Recent runs
+            <span class="section-kicker">Latest Run</span>
+            <h2 class="panel-card__title">
+              Run summary
             </h2>
-            <p class="panel__description">
-              Latest checker executions written by the Python worker.
-            </p>
+          </div>
+
+          <PortalStatusPill :status="data.latestRun?.overall_status" />
+        </div>
+
+        <div v-if="data.latestRun" class="kv-grid">
+          <div class="kv-item">
+            <span class="kv-item__label">Run key</span>
+            <strong>{{ data.latestRun.run_key }}</strong>
+          </div>
+          <div class="kv-item">
+            <span class="kv-item__label">Generated</span>
+            <strong>{{ formatDate(data.latestRun.generated_at) }}</strong>
+          </div>
+          <div class="kv-item">
+            <span class="kv-item__label">Hosts</span>
+            <strong>{{ data.latestRun.total_hosts }}</strong>
+          </div>
+          <div class="kv-item">
+            <span class="kv-item__label">Services</span>
+            <strong>{{ data.latestRun.total_services }}</strong>
           </div>
         </div>
 
-        <div v-if="data.recentRuns.length === 0" class="empty-state">
-          No run history yet.
+        <div v-else class="empty-box">
+          No run data available yet.
         </div>
+      </article>
 
-        <div v-else class="entity-grid entity-grid--compact">
-          <article
-            v-for="run in data.recentRuns"
-            :key="run.run_key"
-            class="entity-card motion-card"
-          >
-            <div class="entity-card__header">
-              <div>
-                <div class="entity-card__eyebrow">
-                  Recent run
-                </div>
-                <h3 class="entity-card__title">
-                  {{ run.run_key }}
-                </h3>
-                <p class="entity-card__subtitle">
-                  {{ formatDate(run.generated_at) }}
-                </p>
-              </div>
-
-              <StatusBadge :status="run.overall_status" />
-            </div>
-
-            <div class="entity-card__stats">
-              <div class="entity-stat">
-                <span class="entity-stat__label">Services</span>
-                <span class="entity-stat__value">{{ run.total_services }}</span>
-              </div>
-              <div class="entity-stat">
-                <span class="entity-stat__label">Service fails</span>
-                <span class="entity-stat__value">{{ run.total_failed }}</span>
-              </div>
-              <div class="entity-stat">
-                <span class="entity-stat__label">Web fails</span>
-                <span class="entity-stat__value">{{ run.total_web_failed }}</span>
-              </div>
-            </div>
-          </article>
-        </div>
-      </div>
-
-      <div class="panel motion-panel">
-        <div class="panel__header">
+      <article class="panel-card">
+        <div class="panel-card__header">
           <div>
-            <h2 class="panel__title">
+            <span class="section-kicker">Current Problems</span>
+            <h2 class="panel-card__title">
               Failing sites
             </h2>
-            <p class="panel__description">
-              Grouped by current latest service result.
-            </p>
           </div>
         </div>
 
-        <div v-if="data.failingSites.length === 0" class="empty-state">
-          No site-level failures right now.
+        <div v-if="data.failingSites.length === 0" class="empty-box">
+          No failing site groups right now.
         </div>
 
-        <div v-else class="entity-grid entity-grid--compact">
-          <article
-            v-for="site in data.failingSites"
-            :key="site.site_name"
-            class="entity-card motion-card"
-          >
-            <div class="entity-card__header">
-              <div>
-                <div class="entity-card__eyebrow">
-                  Site health
-                </div>
-                <h3 class="entity-card__title">
-                  {{ site.site_name }}
-                </h3>
-                <p class="entity-card__subtitle">
-                  Failing services on latest snapshot
-                </p>
-              </div>
-
-              <StatusBadge :status="site.failing_services > 0 ? 'FAIL' : 'PASS'" />
+        <div v-else class="stack-list">
+          <div v-for="site in data.failingSites" :key="site.site_name" class="stack-row">
+            <div>
+              <strong>{{ site.site_name }}</strong>
+              <p>{{ site.failing_services }} failing services</p>
             </div>
-
-            <div class="entity-card__stats">
-              <div class="entity-stat">
-                <span class="entity-stat__label">Failing services</span>
-                <span class="entity-stat__value">{{ site.failing_services }}</span>
-              </div>
-            </div>
-          </article>
+            <PortalStatusPill :status="site.failing_services > 0 ? 'FAIL' : 'PASS'" />
+          </div>
         </div>
+      </article>
+    </section>
+
+    <section class="panel-card">
+      <div class="panel-card__header">
+        <div>
+          <span class="section-kicker">Recent Activity</span>
+          <h2 class="panel-card__title">
+            Run history
+          </h2>
+        </div>
+      </div>
+
+      <div v-if="data.recentRuns.length === 0" class="empty-box">
+        No recent run history found.
+      </div>
+
+      <div v-else class="card-grid card-grid--compact">
+        <article v-for="run in data.recentRuns" :key="run.run_key" class="info-card">
+          <div class="info-card__header">
+            <div>
+              <strong>{{ run.run_key }}</strong>
+              <p>{{ formatDate(run.generated_at) }}</p>
+            </div>
+            <PortalStatusPill :status="run.overall_status" />
+          </div>
+
+          <div class="mini-stats">
+            <span>{{ run.total_services }} services</span>
+            <span>{{ run.total_failed }} service issues</span>
+            <span>{{ run.total_web_failed }} web issues</span>
+          </div>
+        </article>
       </div>
     </section>
 
-    <section class="stack-grid">
-      <div class="panel motion-panel">
-        <div class="panel__header">
+    <section class="panel-grid">
+      <article class="panel-card">
+        <div class="panel-card__header">
           <div>
-            <h2 class="panel__title">
-              Latest failing services
+            <span class="section-kicker">Service Failures</span>
+            <h2 class="panel-card__title">
+              Open service issues
             </h2>
-            <p class="panel__description">
-              Jump straight into service report HTML or screenshots.
-            </p>
           </div>
         </div>
 
-        <div v-if="data.failingServices.length === 0" class="empty-state">
+        <div v-if="data.failingServices.length === 0" class="empty-box">
           No failing services.
         </div>
 
-        <div v-else class="entity-grid">
-          <article
-            v-for="service in data.failingServices"
-            :key="service.service_result_id"
-            class="entity-card motion-card"
-          >
-            <div class="entity-card__header">
+        <div v-else class="card-grid">
+          <article v-for="item in data.failingServices" :key="item.service_result_id" class="issue-card">
+            <div class="info-card__header">
               <div>
-                <div class="entity-card__eyebrow">
-                  {{ service.site_name }}
-                </div>
-                <h3 class="entity-card__title">
-                  {{ service.service_name }}
-                </h3>
-                <p class="entity-card__subtitle">
-                  {{ service.host_display_name || service.host_address }}
-                </p>
+                <strong>{{ item.service_name }}</strong>
+                <p>{{ item.site_name }} / {{ item.host_display_name || item.host_address }}</p>
               </div>
-
-              <StatusBadge :status="service.status" />
+              <PortalStatusPill :status="item.status" />
             </div>
 
-            <div
-              v-if="service.connection_error"
-              class="entity-card__message entity-card__message--error"
-            >
-              {{ service.connection_error }}
-            </div>
+            <p v-if="item.connection_error" class="issue-card__message issue-card__message--error">
+              {{ item.connection_error }}
+            </p>
 
-            <div class="entity-card__footer">
-              <div class="inline-actions">
-                <a
-                  v-if="service.service_report_html_path"
-                  :href="artifactUrl(service.service_report_html_path)"
-                  target="_blank"
-                  class="link-button"
-                >
-                  HTML
-                </a>
-                <a
-                  v-if="service.service_screenshot_file"
-                  :href="artifactUrl(service.service_screenshot_file)"
-                  target="_blank"
-                  class="link-button"
-                >
-                  PNG
-                </a>
-              </div>
+            <div class="action-row">
+              <UButton
+                v-if="item.service_report_html_path"
+                :to="artifactUrl(item.service_report_html_path)"
+                target="_blank"
+                variant="soft"
+                color="neutral"
+                icon="i-lucide-file-text"
+              >
+                HTML
+              </UButton>
+              <UButton
+                v-if="item.service_screenshot_file"
+                :to="artifactUrl(item.service_screenshot_file)"
+                target="_blank"
+                variant="soft"
+                color="neutral"
+                icon="i-lucide-image"
+              >
+                PNG
+              </UButton>
             </div>
           </article>
         </div>
-      </div>
+      </article>
 
-      <div class="panel motion-panel">
-        <div class="panel__header">
+      <article class="panel-card">
+        <div class="panel-card__header">
           <div>
-            <h2 class="panel__title">
-              Latest failing web checks
+            <span class="section-kicker">Web Failures</span>
+            <h2 class="panel-card__title">
+              Open web issues
             </h2>
-            <p class="panel__description">
-              Screenshots and messages captured from web targets.
-            </p>
           </div>
         </div>
 
-        <div v-if="data.failingWebChecks.length === 0" class="empty-state">
+        <div v-if="data.failingWebChecks.length === 0" class="empty-box">
           No failing web checks.
         </div>
 
-        <div v-else class="entity-grid">
-          <article
-            v-for="item in data.failingWebChecks"
-            :key="item.web_result_id"
-            class="entity-card motion-card"
-          >
-            <div class="entity-card__header">
+        <div v-else class="card-grid">
+          <article v-for="item in data.failingWebChecks" :key="item.web_result_id" class="issue-card">
+            <div class="info-card__header">
               <div>
-                <div class="entity-card__eyebrow">
-                  {{ item.site_name }}
-                </div>
-                <h3 class="entity-card__title">
-                  {{ item.target_name }}
-                </h3>
-                <p class="entity-card__subtitle entity-card__subtitle--wrap">
-                  {{ item.target_url }}
-                </p>
+                <strong>{{ item.target_name }}</strong>
+                <p>{{ item.site_name }}</p>
               </div>
-
-              <StatusBadge :status="item.status" />
+              <PortalStatusPill :status="item.status" />
             </div>
 
-            <div class="entity-card__message">
-              {{ item.message || '-' }}
-            </div>
+            <p class="issue-card__message">
+              {{ item.message || item.target_url }}
+            </p>
 
-            <div class="entity-card__footer">
-              <div class="inline-actions">
-                <a
-                  v-if="item.screenshot_file"
-                  :href="artifactUrl(item.screenshot_file)"
-                  target="_blank"
-                  class="link-button"
-                >
-                  Screenshot
-                </a>
-                <a
-                  v-if="item.web_report_html_path"
-                  :href="artifactUrl(item.web_report_html_path)"
-                  target="_blank"
-                  class="link-button"
-                >
-                  HTML
-                </a>
-              </div>
+            <div class="action-row">
+              <UButton
+                v-if="item.web_report_html_path"
+                :to="artifactUrl(item.web_report_html_path)"
+                target="_blank"
+                variant="soft"
+                color="neutral"
+                icon="i-lucide-file-text"
+              >
+                HTML
+              </UButton>
+              <UButton
+                v-if="item.screenshot_file"
+                :to="artifactUrl(item.screenshot_file)"
+                target="_blank"
+                variant="soft"
+                color="neutral"
+                icon="i-lucide-image"
+              >
+                PNG
+              </UButton>
             </div>
           </article>
         </div>
-      </div>
+      </article>
     </section>
   </div>
 </template>
