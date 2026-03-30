@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
 import { createReadStream } from 'node:fs'
 import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
-import { resolve } from 'node:path'
+import { isAbsolute, relative, resolve } from 'node:path'
 
 const MAX_LOG_TAIL = 12000
 
@@ -316,10 +316,13 @@ export const triggerCheckerRun = async () => {
 
 export const resolveArtifactPath = (requestedPath: string) => {
   const { checkerOutputRoot } = getCheckerPaths()
+  const resolvedRoot = resolve(checkerOutputRoot)
   const resolvedPath = resolve(requestedPath)
-  const allowedRoot = `${checkerOutputRoot}/`
+  const relativePath = relative(resolvedRoot, resolvedPath)
+  const isInsideOutputRoot = relativePath === ''
+    || (!relativePath.startsWith('..') && !isAbsolute(relativePath))
 
-  if (resolvedPath !== checkerOutputRoot && !resolvedPath.startsWith(allowedRoot)) {
+  if (!isInsideOutputRoot) {
     throw createError({
       statusCode: 400,
       statusMessage: 'Artifact path must be inside the checker output directory.'

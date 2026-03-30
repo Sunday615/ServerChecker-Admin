@@ -124,11 +124,23 @@ const triggerRun = async () => {
       {{ detailText }}
     </p>
 
+    <div class="run-panel__meta">
+      <div class="run-panel__meta-chip">
+        <span>Command</span>
+        <strong>{{ state.command || 'python run.py' }}</strong>
+      </div>
+      <div class="run-panel__meta-chip">
+        <span>Status</span>
+        <strong>{{ state.status }}</strong>
+      </div>
+    </div>
+
     <UButton
       icon="i-lucide-play"
       color="primary"
       :loading="isSubmitting || state.status === 'RUNNING'"
       :disabled="isSubmitting || state.status === 'RUNNING'"
+      class="run-panel__button"
       @click="triggerRun"
     >
       {{ state.status === 'RUNNING' ? 'Running check...' : 'Run Check' }}

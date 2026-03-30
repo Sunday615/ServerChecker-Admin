@@ -23,21 +23,34 @@ const navItems = [
   { label: 'Web Monitor', to: '/web-checks' },
   { label: 'Reports', to: '/reports' }
 ]
+
+const route = useRoute()
+const shellRef = ref<HTMLElement | null>(null)
+
+usePortalMotion(shellRef)
 </script>
 
 <template>
   <UApp>
-    <div class="layout-shell">
+    <div ref="shellRef" class="layout-shell">
+      <div class="layout-grid" />
+      <div class="layout-orb layout-orb--cyan" />
+      <div class="layout-orb layout-orb--blue" />
+      <div class="layout-beam" />
+
       <aside class="layout-sidebar">
         <NuxtLink to="/" class="brand-block">
-          <span class="brand-block__badge">SC</span>
+          <div class="brand-block__badge-wrap">
+            <span class="brand-block__badge">SC</span>
+            <span class="brand-block__pulse" />
+          </div>
           <div>
             <span class="section-kicker">Operations Portal</span>
             <h1 class="brand-block__title">
               Server Checker
             </h1>
             <p class="brand-block__text">
-              Custom web portal for the Python monitoring project and MySQL-backed report history.
+              Futuristic control surface for Python checks, MySQL snapshots, and artifact review.
             </p>
           </div>
         </NuxtLink>
@@ -59,16 +72,20 @@ const navItems = [
 
       <div class="layout-main">
         <header class="topbar">
-          <div>
+          <div class="topbar__copy">
             <span class="section-kicker">Monitoring Workspace</span>
             <h2 class="topbar__title">
               Control Center
             </h2>
+            <p class="topbar__text">
+              Watch live health, review failures, and open artifacts from a single operational deck.
+            </p>
           </div>
 
-          <p class="topbar__text">
-            Run checks, review failures, and open generated artifacts from one place.
-          </p>
+          <div class="topbar__signal">
+            <span class="topbar__signal-label">Route</span>
+            <strong class="topbar__signal-value">{{ route.path }}</strong>
+          </div>
         </header>
 
         <main class="layout-content">

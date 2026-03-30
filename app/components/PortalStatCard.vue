@@ -8,6 +8,7 @@ defineProps<{
 
 <template>
   <article class="stat-card">
+    <span class="stat-card__beam" />
     <span class="stat-card__label">{{ label }}</span>
     <strong class="stat-card__value">{{ value }}</strong>
     <p v-if="hint" class="stat-card__hint">
