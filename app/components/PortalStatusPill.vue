@@ -10,8 +10,12 @@ const tone = computed(() => {
     return 'ok'
   }
 
-  if (normalized.value === 'RUNNING') {
+  if (normalized.value === 'RUNNING' || normalized.value === 'STOPPING') {
     return 'running'
+  }
+
+  if (normalized.value === 'STOPPED') {
+    return 'warning'
   }
 
   if (

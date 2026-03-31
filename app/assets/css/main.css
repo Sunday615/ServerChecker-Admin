@@ -416,12 +416,14 @@ table {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
 }
 
 .topbar-run__button {
   border-radius: 14px !important;
   padding-inline: 16px !important;
   box-shadow: 0 14px 30px rgba(176, 102, 255, 0.22);
+  width: 100%;
 }
 
 .topbar-run__error {
@@ -1378,6 +1380,12 @@ table {
   border-color: rgba(255, 110, 130, 0.18);
 }
 
+.status-token--warning {
+  color: var(--portal-warning);
+  background: rgba(255, 197, 88, 0.12);
+  border-color: rgba(255, 197, 88, 0.2);
+}
+
 .status-token--idle,
 .status-token--unknown {
   color: var(--portal-text-soft);
@@ -1440,8 +1448,28 @@ table {
   border-radius: 14px !important;
 }
 
+.run-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.run-panel__actions > .action-button {
+  flex: 1 1 180px;
+}
+
+.run-panel__button--stop {
+  box-shadow: 0 14px 28px rgba(255, 110, 130, 0.18);
+}
+
 .run-panel__error {
   color: var(--portal-danger);
+}
+
+.run-panel__note {
+  margin: 0;
+  color: var(--portal-warning);
+  line-height: 1.55;
 }
 
 @media (max-width: 1320px) {

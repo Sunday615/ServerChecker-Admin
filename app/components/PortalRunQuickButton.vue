@@ -12,6 +12,7 @@ type TriggerState = {
 }
 
 const isSubmitting = ref(false)
+const isStopping = ref(false)
 const errorMessage = ref('')
 
 const { data: state, refresh } = await useFetch<TriggerState>('/api/runs/active', {
@@ -30,13 +31,17 @@ const { data: state, refresh } = await useFetch<TriggerState>('/api/runs/active'
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
+const isRunActive = computed(() => {
+  return state.value?.status === 'RUNNING' || state.value?.status === 'STOPPING'
+})
+
 const syncPolling = () => {
   if (pollTimer) {
     clearInterval(pollTimer)
     pollTimer = null
   }
 
-  if (state.value?.status === 'RUNNING') {
+  if (isRunActive.value) {
     pollTimer = setInterval(() => {
       refresh()
     }, 3000)
@@ -56,7 +61,23 @@ onBeforeUnmount(() => {
 })
 
 const buttonLabel = computed(() => {
-  return state.value?.status === 'RUNNING' ? 'Running...' : 'Run Check'
+  if (state.value?.status === 'STOPPING') {
+    return 'Stopping...'
+  }
+
+  if (state.value?.status === 'RUNNING') {
+    return 'Stop Run'
+  }
+
+  return 'Run Check'
+})
+
+const buttonTone = computed(() => {
+  return isRunActive.value ? 'danger' : 'primary'
+})
+
+const buttonIcon = computed(() => {
+  return isRunActive.value ? 'i-lucide-square' : 'i-lucide-play'
 })
 
 const triggerRun = async () => {
@@ -76,18 +97,45 @@ const triggerRun = async () => {
     isSubmitting.value = false
   }
 }
+
+const stopRun = async () => {
+  errorMessage.value = ''
+  isStopping.value = true
+
+  try {
+    await $fetch('/api/runs/stop', {
+      method: 'POST'
+    })
+    await refresh()
+  }
+  catch (error: any) {
+    errorMessage.value = error?.data?.statusMessage || error?.message || 'Unable to stop checker run.'
+  }
+  finally {
+    isStopping.value = false
+  }
+}
+
+const handleClick = async () => {
+  if (isRunActive.value) {
+    await stopRun()
+    return
+  }
+
+  await triggerRun()
+}
 </script>
 
 <template>
   <div class="topbar-run">
     <PortalActionButton
-      icon="i-lucide-play"
-      tone="primary"
+      :icon="buttonIcon"
+      :tone="buttonTone"
       size="md"
-      :loading="isSubmitting || state.status === 'RUNNING'"
-      :disabled="isSubmitting || state.status === 'RUNNING'"
+      :loading="isSubmitting || isStopping || state.status === 'STOPPING'"
+      :disabled="isSubmitting || isStopping"
       class="topbar-run__button"
-      @click="triggerRun"
+      @click="handleClick"
     >
       {{ buttonLabel }}
     </PortalActionButton>

@@ -6,8 +6,16 @@ import { isAbsolute, relative, resolve } from 'node:path'
 
 const MAX_LOG_TAIL = 12000
 
+export type CheckerRunStatus =
+  | 'IDLE'
+  | 'RUNNING'
+  | 'STOPPING'
+  | 'STOPPED'
+  | 'COMPLETED'
+  | 'FAILED'
+
 export type CheckerRunState = {
-  status: 'IDLE' | 'RUNNING' | 'COMPLETED' | 'FAILED'
+  status: CheckerRunStatus
   startedAt: string | null
   finishedAt: string | null
   exitCode: number | null
@@ -25,6 +33,7 @@ type CheckerPaths = {
   runtimeDir: string
   stateFile: string
   lockFile: string
+  stopFile: string
 }
 
 const createDefaultState = (checkerRoot = '', command = ''): CheckerRunState => ({
@@ -43,6 +52,10 @@ const missingCheckerConfigError = () => createError({
   statusCode: 500,
   statusMessage: 'Checker path config is missing. Set CHECKER_ROOT, CHECKER_RUN_SCRIPT, and CHECKER_OUTPUT_ROOT in your .env file.'
 })
+
+const isRunActiveStatus = (status: CheckerRunStatus | string | null | undefined) => {
+  return status === 'RUNNING' || status === 'STOPPING'
+}
 
 const resolveExistingPath = (
   candidates: Array<string | undefined>,
@@ -119,7 +132,8 @@ export const getCheckerPaths = (): CheckerPaths => {
     checkerOutputRoot,
     runtimeDir,
     stateFile: resolve(runtimeDir, 'web_trigger_state.json'),
-    lockFile: resolve(runtimeDir, 'web_trigger.lock')
+    lockFile: resolve(runtimeDir, 'web_trigger.lock'),
+    stopFile: resolve(runtimeDir, 'web_trigger.stop')
   }
 }
 
@@ -223,11 +237,11 @@ const readLockPid = async (paths = getCheckerPaths()) => {
 const syncCheckerRunState = async (paths = getCheckerPaths()) => {
   const state = await readStateFile(paths)
   const lockPid = await readLockPid(paths)
-  const activePid = state.status === 'RUNNING'
+  const activePid = isRunActiveStatus(state.status)
     ? (state.pid ?? lockPid)
     : lockPid
 
-  if (state.status === 'RUNNING' && isPidRunning(activePid)) {
+  if (isRunActiveStatus(state.status) && isPidRunning(activePid)) {
     return state
   }
 
@@ -235,19 +249,24 @@ const syncCheckerRunState = async (paths = getCheckerPaths()) => {
     await clearLock(paths)
   }
 
-  if (state.status !== 'RUNNING') {
+  if (!isRunActiveStatus(state.status)) {
     return state
   }
 
+  const stopRequested = await hasStopRequest(paths)
+  await clearStopRequest(paths)
+
   const healedState: CheckerRunState = {
     ...state,
-    status: 'FAILED',
+    status: stopRequested ? 'STOPPED' : 'FAILED',
     finishedAt: state.finishedAt ?? new Date().toISOString(),
-    exitCode: state.exitCode ?? -1,
+    exitCode: stopRequested ? 130 : (state.exitCode ?? -1),
     pid: null,
     stderrTail: appendTail(
       state.stderrTail,
-      '\nRun process is no longer active. Cleared a stale trigger lock.'
+      stopRequested
+        ? '\nRun was stopped by user.'
+        : '\nRun process is no longer active. Cleared a stale trigger lock.'
     )
   }
 
@@ -262,7 +281,7 @@ export const readCheckerRunState = async () => {
 const hasActiveLock = async (paths = getCheckerPaths()) => {
   const state = await syncCheckerRunState(paths)
 
-  if (state.status === 'RUNNING' && isPidRunning(state.pid)) {
+  if (isRunActiveStatus(state.status) && isPidRunning(state.pid)) {
     return true
   }
 
@@ -275,12 +294,40 @@ const writeLock = async (pid = process.pid, paths = getCheckerPaths()) => {
   await writeFile(paths.lockFile, String(pid), 'utf-8')
 }
 
+const pathExists = async (candidate: string) => {
+  try {
+    await access(candidate)
+    return true
+  }
+  catch {
+    return false
+  }
+}
+
 const clearLock = async (paths = getCheckerPaths()) => {
   try {
     await rm(paths.lockFile, { force: true })
   }
   catch {
     // Ignore cleanup errors for stale lock removal attempts.
+  }
+}
+
+const writeStopRequest = async (paths = getCheckerPaths()) => {
+  await ensureRuntimeDir(paths)
+  await writeFile(paths.stopFile, new Date().toISOString(), 'utf-8')
+}
+
+const hasStopRequest = async (paths = getCheckerPaths()) => {
+  return pathExists(paths.stopFile)
+}
+
+const clearStopRequest = async (paths = getCheckerPaths()) => {
+  try {
+    await rm(paths.stopFile, { force: true })
+  }
+  catch {
+    // Ignore cleanup errors for stale stop request removal attempts.
   }
 }
 
@@ -297,6 +344,7 @@ export const triggerCheckerRun = async () => {
 
   await ensureRuntimeDir(paths)
   await writeLock(process.pid, paths)
+  await clearStopRequest(paths)
 
   const startingState: CheckerRunState = {
     status: 'RUNNING',
@@ -335,14 +383,19 @@ export const triggerCheckerRun = async () => {
 
   child.on('error', async (error) => {
     await clearLock(paths)
+    const stopRequested = await hasStopRequest(paths)
+    await clearStopRequest(paths)
+
     await writeCheckerRunState({
-      status: 'FAILED',
+      status: stopRequested ? 'STOPPED' : 'FAILED',
       startedAt: startingState.startedAt,
       finishedAt: new Date().toISOString(),
-      exitCode: -1,
+      exitCode: stopRequested ? 130 : -1,
       pid: null,
       stdoutTail,
-      stderrTail: appendTail(stderrTail, `\n${error.message}`),
+      stderrTail: stopRequested
+        ? appendTail(stderrTail, '\nRun was stopped by user.')
+        : appendTail(stderrTail, `\n${error.message}`),
       command: spawnConfig.display,
       checkerRoot: paths.checkerRoot
     }, paths)
@@ -350,14 +403,21 @@ export const triggerCheckerRun = async () => {
 
   child.on('close', async (code) => {
     await clearLock(paths)
+    const stopRequested = await hasStopRequest(paths)
+    await clearStopRequest(paths)
+
     await writeCheckerRunState({
-      status: code === 0 || (code === 1 && !stderrTail.trim()) ? 'COMPLETED' : 'FAILED',
+      status: stopRequested
+        ? 'STOPPED'
+        : (code === 0 || (code === 1 && !stderrTail.trim()) ? 'COMPLETED' : 'FAILED'),
       startedAt: startingState.startedAt,
       finishedAt: new Date().toISOString(),
-      exitCode: code ?? -1,
+      exitCode: stopRequested ? 130 : (code ?? -1),
       pid: null,
       stdoutTail,
-      stderrTail,
+      stderrTail: stopRequested
+        ? appendTail(stderrTail, '\nRun was stopped by user.')
+        : stderrTail,
       command: spawnConfig.display,
       checkerRoot: paths.checkerRoot
     }, paths)
@@ -366,6 +426,65 @@ export const triggerCheckerRun = async () => {
   return {
     started: true,
     state: startingState
+  }
+}
+
+export const stopCheckerRun = async () => {
+  const paths = getCheckerPaths()
+  const state = await syncCheckerRunState(paths)
+  const pid = state.pid ?? await readLockPid(paths)
+
+  if (state.status === 'STOPPING') {
+    return {
+      stopped: true,
+      state
+    }
+  }
+
+  if (!isRunActiveStatus(state.status) || !pid || !isPidRunning(pid)) {
+    return {
+      stopped: false,
+      state: await syncCheckerRunState(paths)
+    }
+  }
+
+  await writeStopRequest(paths)
+
+  const stoppingState: CheckerRunState = {
+    ...state,
+    status: 'STOPPING',
+    pid
+  }
+
+  await writeCheckerRunState(stoppingState, paths)
+
+  try {
+    process.kill(pid, 'SIGTERM')
+  }
+  catch (error: any) {
+    if (error?.code !== 'ESRCH') {
+      throw error
+    }
+  }
+
+  const forceKillTimer = setTimeout(() => {
+    if (!isPidRunning(pid)) {
+      return
+    }
+
+    try {
+      process.kill(pid, 'SIGKILL')
+    }
+    catch {
+      // Ignore force-stop errors when the process is already gone.
+    }
+  }, 5000)
+
+  forceKillTimer.unref?.()
+
+  return {
+    stopped: true,
+    state: stoppingState
   }
 }
 

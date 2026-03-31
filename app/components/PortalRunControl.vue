@@ -18,6 +18,7 @@ const emit = defineEmits<{
 
 const errorMessage = ref('')
 const isSubmitting = ref(false)
+const isStopping = ref(false)
 const { formatDate } = usePortalUtils()
 
 const { data: state, refresh } = await useFetch<TriggerState>('/api/runs/active', {
@@ -36,13 +37,17 @@ const { data: state, refresh } = await useFetch<TriggerState>('/api/runs/active'
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
+const isRunActive = computed(() => {
+  return state.value?.status === 'RUNNING' || state.value?.status === 'STOPPING'
+})
+
 const syncPolling = () => {
   if (pollTimer) {
     clearInterval(pollTimer)
     pollTimer = null
   }
 
-  if (state.value?.status === 'RUNNING') {
+  if (isRunActive.value) {
     pollTimer = setInterval(() => {
       refresh()
     }, 3000)
@@ -56,7 +61,10 @@ watch(() => state.value?.status, () => {
 }, { immediate: true })
 
 watch(() => state.value?.status, (status, previous) => {
-  if (previous === 'RUNNING' && status && status !== 'RUNNING') {
+  const wasActive = previous === 'RUNNING' || previous === 'STOPPING'
+  const isActive = status === 'RUNNING' || status === 'STOPPING'
+
+  if (wasActive && status && !isActive) {
     emit('completed')
   }
 })
@@ -68,10 +76,20 @@ onBeforeUnmount(() => {
 })
 
 const detailText = computed(() => {
+  if (state.value?.status === 'STOPPING') {
+    return 'Stopping the checker run...'
+  }
+
   if (state.value?.status === 'RUNNING') {
     return state.value.startedAt
       ? `Started ${formatDate(state.value.startedAt)}`
       : 'Run is active'
+  }
+
+  if (state.value?.status === 'STOPPED') {
+    return state.value.finishedAt
+      ? `Run stopped ${formatDate(state.value.finishedAt)}`
+      : 'Run was stopped'
   }
 
   if (state.value?.finishedAt) {
@@ -99,6 +117,24 @@ const failureText = computed(() => {
     .join(' | ')
 })
 
+const stoppedText = computed(() => {
+  if (state.value?.status !== 'STOPPED') {
+    return ''
+  }
+
+  const raw = state.value.stderrTail || state.value.stdoutTail || ''
+  if (!raw) {
+    return 'Run was stopped by user.'
+  }
+
+  return raw
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .slice(-2)
+    .join(' | ')
+})
+
 const triggerRun = async () => {
   errorMessage.value = ''
   isSubmitting.value = true
@@ -115,6 +151,24 @@ const triggerRun = async () => {
   }
   finally {
     isSubmitting.value = false
+  }
+}
+
+const stopRun = async () => {
+  errorMessage.value = ''
+  isStopping.value = true
+
+  try {
+    await $fetch('/api/runs/stop', {
+      method: 'POST'
+    })
+    await refresh()
+  }
+  catch (error: any) {
+    errorMessage.value = error?.data?.statusMessage || error?.message || 'Unable to stop checker run.'
+  }
+  finally {
+    isStopping.value = false
   }
 }
 </script>
@@ -146,20 +200,39 @@ const triggerRun = async () => {
       </div>
     </div>
 
-    <PortalActionButton
-      icon="i-lucide-play"
-      tone="primary"
-      size="md"
-      :loading="isSubmitting || state.status === 'RUNNING'"
-      :disabled="isSubmitting || state.status === 'RUNNING'"
-      class="run-panel__button"
-      @click="triggerRun"
-    >
-      {{ state.status === 'RUNNING' ? 'Running check...' : 'Run Check' }}
-    </PortalActionButton>
+    <div class="run-panel__actions">
+      <PortalActionButton
+        icon="i-lucide-play"
+        tone="primary"
+        size="md"
+        :loading="isSubmitting"
+        :disabled="isSubmitting || isStopping || isRunActive"
+        class="run-panel__button"
+        @click="triggerRun"
+      >
+        Run Check
+      </PortalActionButton>
+
+      <PortalActionButton
+        v-if="isRunActive"
+        icon="i-lucide-square"
+        tone="danger"
+        size="md"
+        :loading="isStopping || state.status === 'STOPPING'"
+        :disabled="isSubmitting || isStopping || state.status === 'STOPPING'"
+        class="run-panel__button run-panel__button--stop"
+        @click="stopRun"
+      >
+        {{ state.status === 'STOPPING' ? 'Stopping...' : 'Stop Run' }}
+      </PortalActionButton>
+    </div>
 
     <p v-if="errorMessage" class="run-panel__error">
       {{ errorMessage }}
+    </p>
+
+    <p v-else-if="stoppedText" class="run-panel__note">
+      {{ stoppedText }}
     </p>
 
     <p v-else-if="failureText" class="run-panel__error">
