@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { statSync } from 'node:fs'
 import { createReadStream } from 'node:fs'
 import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { isAbsolute, relative, resolve } from 'node:path'
@@ -43,19 +44,73 @@ const missingCheckerConfigError = () => createError({
   statusMessage: 'Checker path config is missing. Set CHECKER_ROOT, CHECKER_RUN_SCRIPT, and CHECKER_OUTPUT_ROOT in your .env file.'
 })
 
+const resolveExistingPath = (
+  candidates: Array<string | undefined>,
+  kind: 'file' | 'directory'
+) => {
+  for (const candidate of candidates) {
+    const trimmed = String(candidate || '').trim()
+
+    if (!trimmed) {
+      continue
+    }
+
+    const resolvedCandidate = resolve(trimmed)
+
+    try {
+      const stats = statSync(resolvedCandidate)
+
+      if (kind === 'file' && stats.isFile()) {
+        return resolvedCandidate
+      }
+
+      if (kind === 'directory' && stats.isDirectory()) {
+        return resolvedCandidate
+      }
+    }
+    catch {
+      continue
+    }
+  }
+
+  return ''
+}
+
 export const getCheckerPaths = (): CheckerPaths => {
   const config = useRuntimeConfig()
   const rawCheckerRoot = String(config.checkerRoot || '').trim()
   const rawCheckerRunScript = String(config.checkerRunScript || '').trim()
   const rawCheckerOutputRoot = String(config.checkerOutputRoot || '').trim()
 
-  if (!rawCheckerRoot || !rawCheckerRunScript || !rawCheckerOutputRoot) {
+  const workspaceCheckerRoot = resolve(process.cwd(), '../server-checker-backend')
+  const legacyCheckerRoot = process.platform === 'win32'
+    ? ''
+    : '/Users/macbookpro/server-checker'
+  const checkerRoot = resolveExistingPath(
+    [rawCheckerRoot, workspaceCheckerRoot, legacyCheckerRoot],
+    'directory'
+  )
+  const checkerRunScript = resolveExistingPath(
+    [
+      rawCheckerRunScript,
+      checkerRoot ? resolve(checkerRoot, 'scripts', 'run_once.sh') : '',
+      legacyCheckerRoot ? resolve(legacyCheckerRoot, 'scripts', 'run_once.sh') : ''
+    ],
+    'file'
+  )
+  const checkerOutputRoot = resolveExistingPath(
+    [
+      rawCheckerOutputRoot,
+      checkerRoot ? resolve(checkerRoot, 'output') : '',
+      legacyCheckerRoot ? resolve(legacyCheckerRoot, 'output') : ''
+    ],
+    'directory'
+  )
+
+  if (!checkerRoot || !checkerRunScript || !checkerOutputRoot) {
     throw missingCheckerConfigError()
   }
 
-  const checkerRoot = resolve(rawCheckerRoot)
-  const checkerRunScript = resolve(rawCheckerRunScript)
-  const checkerOutputRoot = resolve(rawCheckerOutputRoot)
   const runtimeDir = resolve(checkerOutputRoot, 'runtime')
 
   return {
