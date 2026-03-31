@@ -72,25 +72,34 @@ type ReportsResponse = {
   }>
 }
 
-type RailItem = {
+type MetricCard = {
+  label: string
+  value: string
+  hint: string
+  detail: string
+  detailTone: 'success' | 'danger' | 'neutral'
+  progress: number
+  icon: string
+  accent: 'primary' | 'soft'
+}
+
+type IncidentRow = {
   id: string
+  kind: 'service' | 'web'
+  kindLabel: string
   icon: string
   title: string
-  subtitle: string
   note: string
+  site: string
+  runKey: string
+  endpoint: string
+  updatedAt: string
   status: string
-  tag: string
   href: string
   generatedAt: string
 }
 
-type ReportCard = {
-  key: string
-  title: string
-  note: string
-  href: string
-  icon: string
-}
+const activeTab = ref<'all' | 'service' | 'web'>('all')
 
 const { formatDate, artifactUrl } = usePortalUtils()
 
@@ -132,19 +141,22 @@ const toNumber = (value: number | string | null | undefined) => {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-const greeting = computed(() => {
-  const hour = new Date().getHours()
-
-  if (hour < 12) {
-    return 'Good morning'
+const formatShortDate = (value: string | null | undefined) => {
+  if (!value) {
+    return 'Waiting for first sync'
   }
 
-  if (hour < 18) {
-    return 'Good afternoon'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
   }
 
-  return 'Good evening'
-})
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric'
+  }).format(date)
+}
 
 const latestRun = computed(() => data.value.latestRun)
 
@@ -180,112 +192,167 @@ const overallHealth = computed(() => {
   return Math.round((totalPassing.value / totalMonitors.value) * 100)
 })
 
-const railFeed = computed<RailItem[]>(() => {
+const latestArtifactHref = computed(() => {
+  if (reports.value.latestRun?.web_summary_report_path) {
+    return artifactUrl(reports.value.latestRun.web_summary_report_path)
+  }
+
+  const firstSiteReport = reports.value.siteReports[0]
+
+  if (firstSiteReport) {
+    return artifactUrl(firstSiteReport.report_html_path || firstSiteReport.summary_screenshot_file)
+  }
+
+  return ''
+})
+
+const reportCount = computed(() => {
+  return reports.value.siteReports.length + (reports.value.latestRun?.web_summary_report_path ? 1 : 0)
+})
+
+const lastSyncedLabel = computed(() => {
+  return latestRun.value?.generated_at
+    ? `Synced ${formatShortDate(latestRun.value.generated_at)}`
+    : 'Waiting for first sync'
+})
+
+const dateRangeLabel = computed(() => {
+  const runs = data.value.recentRuns
+
+  if (!runs.length) {
+    return 'Latest snapshot'
+  }
+
+  const newest = runs[0]!
+  const oldest = runs[runs.length - 1]!
+
+  return `${formatShortDate(oldest.generated_at)} - ${formatShortDate(newest.generated_at)}`
+})
+
+const overviewCards = computed<MetricCard[]>(() => {
+  const serviceAlertText = data.value.failingServiceCount
+    ? `${data.value.failingServiceCount} service alerts active`
+    : 'All service checks are healthy'
+
+  const webAlertText = data.value.failingWebCount
+    ? `${data.value.failingWebCount} web alerts active`
+    : 'All web targets are healthy'
+
+  const healthText = totalIssues.value
+    ? `${totalIssues.value} items need attention`
+    : 'No active incidents right now'
+
+  return [
+    {
+      label: 'Sites monitored',
+      value: String(data.value.totalSiteCount),
+      hint: 'Connected sites in the checker database',
+      detail: `${toNumber(latestRun.value?.total_hosts)} hosts in the latest run`,
+      detailTone: 'neutral',
+      progress: data.value.totalSiteCount ? 100 : 0,
+      icon: 'i-lucide-buildings',
+      accent: 'soft'
+    },
+    {
+      label: 'Service checks',
+      value: String(totalServiceCount.value),
+      hint: 'SSH and profile checks from the backend runner',
+      detail: serviceAlertText,
+      detailTone: data.value.failingServiceCount ? 'danger' : 'success',
+      progress: serviceHealth.value,
+      icon: 'i-lucide-server',
+      accent: 'soft'
+    },
+    {
+      label: 'Web checks',
+      value: String(totalWebCount.value),
+      hint: 'Browser steps and screenshot journeys',
+      detail: webAlertText,
+      detailTone: data.value.failingWebCount ? 'danger' : 'success',
+      progress: webHealth.value,
+      icon: 'i-lucide-monitor-check',
+      accent: 'soft'
+    },
+    {
+      label: 'Platform health',
+      value: `${overallHealth.value}%`,
+      hint: 'Combined healthy rate across every monitor',
+      detail: healthText,
+      detailTone: totalIssues.value ? 'danger' : 'success',
+      progress: overallHealth.value,
+      icon: 'i-lucide-shield-check',
+      accent: 'primary'
+    }
+  ]
+})
+
+const incidentRows = computed<IncidentRow[]>(() => {
   const serviceItems = data.value.failingServices.map(item => ({
     id: `service-${item.service_result_id}`,
+    kind: 'service' as const,
+    kindLabel: 'Service',
     icon: 'i-lucide-server',
     title: item.service_name,
-    subtitle: `${item.site_name} • ${item.host_display_name || item.host_address}`,
-    note: item.connection_error || `Check profile: ${item.check_profile_name || 'default'}`,
+    note: item.connection_error || `${item.host_display_name || item.host_address} • ${item.check_profile_name || 'default profile'}`,
+    site: item.site_name,
+    runKey: item.run_key,
+    endpoint: item.host_display_name || item.host_address,
+    updatedAt: formatDate(item.generated_at),
     status: item.status,
-    tag: 'Service',
     href: artifactUrl(item.service_report_html_path || item.service_screenshot_file),
     generatedAt: item.generated_at
   }))
 
   const webItems = data.value.failingWebChecks.map(item => ({
     id: `web-${item.web_result_id}`,
+    kind: 'web' as const,
+    kindLabel: 'Web',
     icon: 'i-lucide-globe',
     title: item.target_name,
-    subtitle: `${item.site_name} • ${item.target_url}`,
-    note: item.message || (item.final_url ? `Final URL: ${item.final_url}` : 'Browser check needs attention'),
+    note: item.message || item.final_url || item.target_url,
+    site: item.site_name,
+    runKey: item.run_key,
+    endpoint: item.final_url || item.target_url,
+    updatedAt: formatDate(item.generated_at),
     status: item.status,
-    tag: 'Web',
     href: artifactUrl(item.web_report_html_path || item.screenshot_file),
     generatedAt: item.generated_at
   }))
 
   return [...serviceItems, ...webItems]
     .sort((left, right) => new Date(right.generatedAt).getTime() - new Date(left.generatedAt).getTime())
-    .slice(0, 8)
+    .slice(0, 10)
 })
 
-const recentRunChips = computed(() => {
-  return data.value.recentRuns.slice(0, 6).map((run, index) => {
-    const date = new Date(run.generated_at)
-    const safeDate = Number.isNaN(date.getTime()) ? new Date() : date
-
-    return {
-      key: run.run_key,
-      active: index === 0,
-      day: new Intl.DateTimeFormat('en-US', { day: '2-digit' }).format(safeDate),
-      month: new Intl.DateTimeFormat('en-US', { month: 'short' }).format(safeDate)
-    }
-  })
-})
-
-const coverageSegments = computed(() => {
-  const stableServices = stableServiceCount.value
-  const stableWeb = stableWebCount.value
-  const activeAlerts = totalIssues.value
-  const total = stableServices + stableWeb + activeAlerts || 1
+const issueTabs = computed(() => {
+  const serviceCount = incidentRows.value.filter(item => item.kind === 'service').length
+  const webCount = incidentRows.value.filter(item => item.kind === 'web').length
 
   return [
     {
-      label: 'Healthy services',
-      count: stableServices,
-      tone: 'primary',
-      width: `${(stableServices / total) * 100}%`
+      id: 'all' as const,
+      label: 'All incidents',
+      count: incidentRows.value.length
     },
     {
-      label: 'Healthy web',
-      count: stableWeb,
-      tone: 'secondary',
-      width: `${(stableWeb / total) * 100}%`
+      id: 'service' as const,
+      label: 'Services',
+      count: serviceCount
     },
     {
-      label: 'Active alerts',
-      count: activeAlerts,
-      tone: 'warning',
-      width: `${(activeAlerts / total) * 100}%`
+      id: 'web' as const,
+      label: 'Web checks',
+      count: webCount
     }
   ]
 })
 
-const siteTags = computed(() => {
-  return data.value.failingSites
-    .slice(0, 4)
-    .map(site => ({
-      site_name: site.site_name,
-      failing_services: toNumber(site.failing_services),
-      monitored_services: toNumber(site.monitored_services)
-    }))
-})
-
-const reportCards = computed<ReportCard[]>(() => {
-  const items: ReportCard[] = []
-
-  if (reports.value.latestRun?.web_summary_report_path) {
-    items.push({
-      key: 'web-summary',
-      title: 'Latest web summary',
-      note: reports.value.latestRun.run_key,
-      href: artifactUrl(reports.value.latestRun.web_summary_report_path),
-      icon: 'i-lucide-file-text'
-    })
+const filteredRows = computed(() => {
+  if (activeTab.value === 'all') {
+    return incidentRows.value
   }
 
-  for (const report of reports.value.siteReports.slice(0, 3)) {
-    items.push({
-      key: report.site_name,
-      title: report.site_name,
-      note: 'Open latest site report',
-      href: artifactUrl(report.report_html_path || report.summary_screenshot_file),
-      icon: 'i-lucide-folder-open'
-    })
-  }
-
-  return items
+  return incidentRows.value.filter(item => item.kind === activeTab.value)
 })
 
 const refreshAll = async () => {
@@ -309,42 +376,57 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="page-stack dashboard-page">
-    <section class="page-hero page-hero--dashboard">
-      <div>
-        <span class="section-kicker">Python runner + MySQL + Nuxt UI</span>
-        <h1 class="page-title">
-          {{ greeting }}, operations team
+    <section class="page-hero promo-banner panel-card">
+      <div class="promo-banner__copy">
+        <span class="promo-banner__eyebrow">Realtime monitoring portal</span>
+        <h1 class="promo-banner__title">
+          Unified workspace for service health, browser checks, and report artifacts.
         </h1>
-        <p class="page-copy">
-          Command center for service checks, web screenshots, incident pressure, and generated report artifacts in one view.
+        <p class="promo-banner__text">
+          This web portal now reads directly from the backend summary endpoints, then presents the data with Apache ECharts and GSAP inside a cleaner admin dashboard layout.
         </p>
+
+        <div class="promo-banner__meta">
+          <span class="promo-pill">{{ latestRun ? latestRun.run_key : 'Awaiting first run' }}</span>
+          <span class="promo-pill">{{ data.totalSiteCount }} sites</span>
+          <span class="promo-pill">{{ totalMonitors }} monitors</span>
+          <span class="promo-pill">{{ lastSyncedLabel }}</span>
+        </div>
       </div>
 
-      <div class="hero-actions">
-        <div class="hero-inline-stats">
-          <span>{{ data.totalSiteCount }} sites</span>
-          <span>{{ totalMonitors }} monitors</span>
-          <span>{{ latestRun ? formatDate(latestRun.generated_at) : 'Waiting for first run' }}</span>
-        </div>
+      <div class="promo-banner__actions">
+        <PortalStatusPill :status="latestRun?.overall_status || 'IDLE'" />
 
-        <div class="hero-action-row">
-          <UButton
-            to="/reports"
-            variant="soft"
-            color="neutral"
-            icon="i-lucide-files"
-          >
-            Open Reports
-          </UButton>
+        <UButton
+          color="primary"
+          icon="i-lucide-refresh-cw"
+          @click="refreshAll"
+        >
+          Refresh data
+        </UButton>
 
-          <UButton
-            color="primary"
-            icon="i-lucide-refresh-cw"
-            @click="refreshAll"
-          >
-            Refresh Data
-          </UButton>
-        </div>
+        <UButton
+          v-if="latestArtifactHref"
+          :href="latestArtifactHref"
+          external
+          target="_blank"
+          rel="noopener noreferrer"
+          variant="soft"
+          color="neutral"
+          icon="i-lucide-file-text"
+        >
+          Open latest report
+        </UButton>
+
+        <UButton
+          v-else
+          to="/reports"
+          variant="soft"
+          color="neutral"
+          icon="i-lucide-files"
+        >
+          View reports
+        </UButton>
       </div>
     </section>
 
@@ -355,225 +437,184 @@ onBeforeUnmount(() => {
       {{ data.message }}
     </div>
 
-    <section class="dashboard-grid">
-      <div class="dashboard-main">
-        <section class="dashboard-stat-grid">
-          <PortalStatCard
-            label="Services live"
-            :value="String(totalServiceCount)"
-            hint="SSH and profile checks from the Python backend"
-            :detail="`${serviceHealth}% healthy`"
-            :progress="serviceHealth"
-            icon="i-lucide-server"
-            accent="primary"
-          />
-
-          <PortalStatCard
-            label="Web targets"
-            :value="String(totalWebCount)"
-            hint="Browser journeys and screenshots"
-            :detail="`${webHealth}% healthy`"
-            :progress="webHealth"
-            icon="i-lucide-monitor"
-          />
-
-          <PortalStatCard
-            label="Global health"
-            :value="`${overallHealth}%`"
-            hint="Combined score across service and web monitoring"
-            :detail="`${totalIssues} active alerts`"
-            :progress="overallHealth"
-            icon="i-lucide-shield-check"
-          />
-        </section>
-
-        <PortalDashboardCharts
-          :latest-run="latestRun"
-          :recent-runs="data.recentRuns"
-          :failing-sites="data.failingSites"
-          :failing-service-count="data.failingServiceCount"
-          :failing-web-count="data.failingWebCount"
-        />
-
-        <section class="dashboard-bottom-grid">
-          <article class="panel-card info-card coverage-card">
-            <div class="panel-card__header">
-              <div>
-                <span class="section-kicker">Coverage Mix</span>
-                <h2 class="panel-card__title">
-                  Monitoring distribution
-                </h2>
-                <p class="panel-card__subtext">
-                  Healthy monitors versus active alerts in the latest synchronized snapshot.
-                </p>
-              </div>
-
-              <span class="coverage-score">
-                {{ overallHealth }}%
-              </span>
-            </div>
-
-            <div class="coverage-bar">
-              <div
-                v-for="segment in coverageSegments"
-                :key="segment.label"
-                :class="['coverage-segment', `coverage-segment--${segment.tone}`]"
-                :style="{ width: segment.width }"
-              >
-                <span class="coverage-segment__count">{{ segment.count }}</span>
-              </div>
-            </div>
-
-            <div class="coverage-legend">
-              <div
-                v-for="segment in coverageSegments"
-                :key="segment.label"
-                class="coverage-legend__item"
-              >
-                <span :class="['coverage-legend__dot', `coverage-legend__dot--${segment.tone}`]" />
-                <strong>{{ segment.label }}</strong>
-                <span>{{ segment.count }} items</span>
-              </div>
-            </div>
-
-            <div class="rail-tags">
-              <span
-                v-for="site in siteTags"
-                :key="site.site_name"
-                class="rail-tag"
-              >
-                {{ site.site_name }} • {{ site.failing_services }}/{{ site.monitored_services }}
-              </span>
-            </div>
-          </article>
-
-          <article class="panel-card info-card">
-            <div class="panel-card__header">
-              <div>
-                <span class="section-kicker">Artifacts</span>
-                <h2 class="panel-card__title">
-                  Latest report bundle
-                </h2>
-                <p class="panel-card__subtext">
-                  Generated HTML reports and screenshots exposed through the Nuxt artifact endpoint.
-                </p>
-              </div>
-            </div>
-
-            <div class="action-card-grid">
-              <a
-                v-for="card in reportCards"
-                :key="card.key"
-                :href="card.href"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="action-card"
-              >
-                <span class="action-card__icon">
-                  <UIcon :name="card.icon" />
-                </span>
-
-                <div class="action-card__content">
-                  <strong>{{ card.title }}</strong>
-                  <span>{{ card.note }}</span>
-                </div>
-
-                <UIcon
-                  name="i-lucide-arrow-up-right"
-                  class="action-card__arrow"
-                />
-              </a>
-
-              <NuxtLink
-                v-if="reportCards.length === 0"
-                to="/reports"
-                class="action-card"
-              >
-                <span class="action-card__icon">
-                  <UIcon name="i-lucide-files" />
-                </span>
-
-                <div class="action-card__content">
-                  <strong>Open reports page</strong>
-                  <span>No report bundle has been generated yet.</span>
-                </div>
-
-                <UIcon
-                  name="i-lucide-arrow-right"
-                  class="action-card__arrow"
-                />
-              </NuxtLink>
-            </div>
-          </article>
-        </section>
+    <section class="section-heading">
+      <div>
+        <span class="section-kicker">Overview</span>
+        <h2 class="section-title">
+          Monitoring snapshot
+        </h2>
       </div>
 
-      <aside class="dashboard-rail">
-        <article class="panel-card issue-card rail-card">
-          <div class="panel-card__header">
-            <div>
-              <span class="section-kicker">Live Queue</span>
-              <h2 class="panel-card__title">
-                Current alerts
-              </h2>
-              <p class="panel-card__subtext">
-                Latest failing service and browser checks from backend snapshots.
-              </p>
-            </div>
+      <div class="section-heading__actions">
+        <span class="toolbar-pill">{{ dateRangeLabel }}</span>
+        <span class="toolbar-pill">Reports {{ reportCount }}</span>
 
-            <PortalStatusPill :status="latestRun?.overall_status" />
-          </div>
+        <UButton
+          to="/reports"
+          variant="soft"
+          color="neutral"
+          icon="i-lucide-download"
+        >
+          Export
+        </UButton>
+      </div>
+    </section>
 
-          <div class="run-chip-row">
-            <div
-              v-for="chip in recentRunChips"
-              :key="chip.key"
-              :class="['run-chip', { 'run-chip--active': chip.active }]"
+    <section class="dashboard-stat-grid">
+      <PortalStatCard
+        v-for="card in overviewCards"
+        :key="card.label"
+        :label="card.label"
+        :value="card.value"
+        :hint="card.hint"
+        :detail="card.detail"
+        :detail-tone="card.detailTone"
+        :progress="card.progress"
+        :icon="card.icon"
+        :accent="card.accent"
+      />
+    </section>
+
+    <PortalDashboardCharts
+      :latest-run="latestRun"
+      :recent-runs="data.recentRuns"
+      :failing-sites="data.failingSites"
+      :failing-service-count="data.failingServiceCount"
+      :failing-web-count="data.failingWebCount"
+    />
+
+    <section class="table-card panel-card">
+      <div class="panel-card__header">
+        <div>
+          <span class="section-kicker">Recent activity</span>
+          <h2 class="panel-card__title">
+            Latest incidents
+          </h2>
+          <p class="panel-card__subtext">
+            Failing service checks and browser targets from the most recent backend snapshots.
+          </p>
+        </div>
+
+        <div class="section-heading__actions">
+          <NuxtLink
+            to="/services"
+            class="table-link table-link--ghost"
+          >
+            View services
+          </NuxtLink>
+
+          <NuxtLink
+            to="/web-checks"
+            class="table-link table-link--ghost"
+          >
+            View web checks
+          </NuxtLink>
+
+          <NuxtLink
+            to="/reports"
+            class="table-link table-link--ghost"
+          >
+            Reports
+          </NuxtLink>
+        </div>
+      </div>
+
+      <div class="table-toolbar">
+        <div class="tab-strip">
+          <button
+            v-for="tab in issueTabs"
+            :key="tab.id"
+            type="button"
+            :class="['tab-chip', { 'is-active': activeTab === tab.id }]"
+            @click="activeTab = tab.id"
+          >
+            <span>{{ tab.label }}</span>
+            <small>{{ tab.count }}</small>
+          </button>
+        </div>
+
+        <div class="table-actions">
+          <span class="toolbar-pill">{{ incidentRows.length }} live items</span>
+        </div>
+      </div>
+
+      <div class="table-shell">
+        <table class="portal-table">
+          <thead>
+            <tr>
+              <th>Check</th>
+              <th>Type</th>
+              <th>Site</th>
+              <th>Run key</th>
+              <th>Endpoint</th>
+              <th>Updated</th>
+              <th>Status</th>
+              <th />
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr
+              v-for="row in filteredRows"
+              :key="row.id"
             >
-              <strong>{{ chip.day }}</strong>
-              <span>{{ chip.month }}</span>
-            </div>
-          </div>
+              <td>
+                <div class="table-item">
+                  <span class="table-item__icon">
+                    <UIcon :name="row.icon" />
+                  </span>
 
-          <div class="timeline-list">
-            <a
-              v-for="item in railFeed"
-              :key="item.id"
-              :href="item.href"
-              :target="item.href === '#' ? undefined : '_blank'"
-              :rel="item.href === '#' ? undefined : 'noopener noreferrer'"
-              class="timeline-item"
-            >
-              <span class="timeline-item__icon">
-                <UIcon :name="item.icon" />
-              </span>
-
-              <div class="timeline-item__body">
-                <div class="timeline-item__top">
-                  <span class="timeline-item__tag">{{ item.tag }}</span>
-                  <span class="timeline-item__time">{{ formatDate(item.generatedAt) }}</span>
+                  <div class="table-item__text">
+                    <strong>{{ row.title }}</strong>
+                    <span>{{ row.note }}</span>
+                  </div>
                 </div>
+              </td>
 
-                <strong class="timeline-item__title">{{ item.title }}</strong>
-                <p class="timeline-item__subtitle">{{ item.subtitle }}</p>
-                <p class="timeline-item__note">{{ item.note }}</p>
-              </div>
-            </a>
+              <td>
+                <span class="table-badge">{{ row.kindLabel }}</span>
+              </td>
 
-            <div
-              v-if="railFeed.length === 0"
-              class="timeline-empty"
-            >
-              Latest snapshot shows no open incidents.
-            </div>
-          </div>
-        </article>
+              <td>{{ row.site }}</td>
+              <td>{{ row.runKey }}</td>
+              <td>{{ row.endpoint }}</td>
+              <td>{{ row.updatedAt }}</td>
 
-        <PortalRunControl
-          @triggered="refreshAll"
-          @completed="refreshAll"
-        />
-      </aside>
+              <td>
+                <PortalStatusPill :status="row.status" />
+              </td>
+
+              <td class="portal-table__actions">
+                <a
+                  v-if="row.href"
+                  :href="row.href"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="table-link"
+                >
+                  Open
+                </a>
+
+                <span
+                  v-else
+                  class="table-link table-link--muted"
+                >
+                  Unavailable
+                </span>
+              </td>
+            </tr>
+
+            <tr v-if="filteredRows.length === 0">
+              <td colspan="8">
+                <div class="empty-state">
+                  <strong>No items in this view</strong>
+                  <span>Failing services and web checks will appear here as soon as the backend reports them.</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </section>
   </div>
 </template>

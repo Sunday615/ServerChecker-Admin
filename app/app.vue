@@ -2,54 +2,70 @@
 const portalRoot = ref<HTMLElement | null>(null)
 const route = useRoute()
 
-const navigation = [
+const navigationGroups = [
   {
-    label: 'Dashboard',
-    caption: 'Overview',
-    to: '/',
-    icon: 'i-lucide-house'
+    label: 'General',
+    items: [
+      {
+        label: 'Dashboard',
+        caption: 'Overview',
+        to: '/',
+        icon: 'i-lucide-layout-dashboard'
+      },
+      {
+        label: 'Runs',
+        caption: 'Execution history',
+        to: '/runs',
+        icon: 'i-lucide-history'
+      }
+    ]
   },
   {
-    label: 'Runs',
-    caption: 'History',
-    to: '/runs',
-    icon: 'i-lucide-history'
-  },
-  {
-    label: 'Services',
-    caption: 'Hosts',
-    to: '/services',
-    icon: 'i-lucide-server'
-  },
-  {
-    label: 'Web Checks',
-    caption: 'Browser',
-    to: '/web-checks',
-    icon: 'i-lucide-globe'
-  },
-  {
-    label: 'Reports',
-    caption: 'Artifacts',
-    to: '/reports',
-    icon: 'i-lucide-file-text'
+    label: 'Monitoring',
+    items: [
+      {
+        label: 'Services',
+        caption: 'Service health',
+        to: '/services',
+        icon: 'i-lucide-server'
+      },
+      {
+        label: 'Web Checks',
+        caption: 'Browser targets',
+        to: '/web-checks',
+        icon: 'i-lucide-monitor-check'
+      },
+      {
+        label: 'Reports',
+        caption: 'Artifacts',
+        to: '/reports',
+        icon: 'i-lucide-files'
+      }
+    ]
   }
-]
+] as const
 
-const activeSection = computed(() => {
-  return navigation.find(item => item.to === route.path) || {
-    label: 'Dashboard',
-    caption: 'Overview',
-    to: '/',
-    icon: 'i-lucide-house'
-  }
+const navigation = navigationGroups.flatMap(group =>
+  group.items.map(item => ({
+    ...item,
+    group: group.label
+  }))
+)
+
+const fallbackSection = navigation[0]!
+
+const activeSection = computed<(typeof navigation)[number]>(() => {
+  return navigation.find(item => {
+    if (item.to === '/') {
+      return route.path === '/'
+    }
+
+    return route.path.startsWith(item.to)
+  }) || fallbackSection
 })
 
-const todayLabel = computed(() => {
-  return new Intl.DateTimeFormat('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric'
-  }).format(new Date())
+const searchPlaceholder = computed(() => {
+  return `Search ${activeSection.value.label.toLowerCase()}, reports, or runs...`
 })
 
 useHead({
@@ -79,66 +95,166 @@ usePortalMotion(portalRoot)
       ref="portalRoot"
       class="portal-shell"
     >
-      <span class="layout-grid" />
-      <span class="layout-beam layout-beam--one" />
-      <span class="layout-beam layout-beam--two" />
-      <span class="layout-orb layout-orb--one" />
-      <span class="layout-orb layout-orb--two" />
-      <span class="layout-capsule layout-capsule--one" />
-      <span class="layout-capsule layout-capsule--two" />
-
-      <div class="portal-surface">
+      <div class="portal-layout">
         <aside class="portal-sidebar brand-block">
-          <NuxtLink
-            to="/"
-            class="brand-block__logo"
-            aria-label="Server Checker home"
-          >
-            <span class="brand-block__badge">SC</span>
-            <span class="brand-block__wordmark">
-              <small>server</small>
-              <strong>checker</strong>
-            </span>
-          </NuxtLink>
-
-          <nav class="sidebar-nav">
+          <div class="brand-block__header">
             <NuxtLink
-              v-for="item in navigation"
-              :key="item.to"
-              :to="item.to"
-              :title="item.label"
-              :aria-label="item.label"
-              :class="['sidebar-nav__link', { 'is-active': route.path === item.to }]"
+              to="/"
+              class="brand-block__logo"
+              aria-label="Server Checker home"
             >
-              <span class="sidebar-nav__icon">
-                <UIcon :name="item.icon" />
+              <span class="brand-block__mark">
+                <span class="brand-block__mark-dot" />
+                <span class="brand-block__mark-dot" />
+                <span class="brand-block__mark-dot" />
+                <span class="brand-block__mark-dot" />
               </span>
 
-              <span class="sidebar-nav__sr">{{ item.label }}</span>
+              <span class="brand-block__wordmark">
+                <strong>Server Portal</strong>
+                <small>checker workspace</small>
+              </span>
             </NuxtLink>
-          </nav>
 
-          <div class="sidebar-profile" aria-hidden="true">
-            <div class="sidebar-profile__avatar">
-              PY
+            <button
+              type="button"
+              class="sidebar-toggle"
+              aria-label="Sidebar options"
+            >
+              <UIcon name="i-lucide-panel-left-close" />
+            </button>
+          </div>
+
+          <div class="sidebar-store">
+            <span class="sidebar-meta-label">Workspace</span>
+
+            <div class="sidebar-store__card">
+              <span class="sidebar-store__badge">SC</span>
+
+              <div class="sidebar-store__content">
+                <strong>Server Checker</strong>
+                <span>Production portal</span>
+              </div>
+
+              <UIcon name="i-lucide-chevrons-up-down" />
             </div>
-            <span class="sidebar-profile__status" />
+          </div>
+
+          <div
+            v-for="group in navigationGroups"
+            :key="group.label"
+            class="sidebar-group"
+          >
+            <span class="sidebar-group__label">{{ group.label }}</span>
+
+            <nav class="sidebar-nav">
+              <NuxtLink
+                v-for="item in group.items"
+                :key="item.to"
+                :to="item.to"
+                :class="['sidebar-nav__link', { 'is-active': activeSection.to === item.to }]"
+              >
+                <span class="sidebar-nav__icon">
+                  <UIcon :name="item.icon" />
+                </span>
+
+                <span class="sidebar-nav__content">
+                  <strong>{{ item.label }}</strong>
+                  <small>{{ item.caption }}</small>
+                </span>
+              </NuxtLink>
+            </nav>
+          </div>
+
+          <div class="sidebar-spacer" />
+
+          <div class="sidebar-profile">
+            <div class="sidebar-profile__avatar">
+              SC
+            </div>
+
+            <div class="sidebar-profile__content">
+              <strong>Ops Console</strong>
+              <span>mysql + python runner</span>
+            </div>
+
+            <UIcon name="i-lucide-chevrons-up-down" />
           </div>
         </aside>
 
         <section class="portal-main">
           <header class="topbar">
-            <div>
-              <span class="topbar__eyebrow">Server Check Portal</span>
-              <p class="topbar__title">
-                {{ activeSection.label }}
+            <div class="topbar__context">
+              <div class="topbar__crumbs-row">
+                <button
+                  type="button"
+                  class="topbar-icon topbar-icon--ghost"
+                  aria-label="Previous"
+                >
+                  <UIcon name="i-lucide-chevron-left" />
+                </button>
+
+                <button
+                  type="button"
+                  class="topbar-icon topbar-icon--ghost"
+                  aria-label="Next"
+                >
+                  <UIcon name="i-lucide-chevron-right" />
+                </button>
+
+                <p class="topbar__crumbs">
+                  <span>Pages</span>
+                  <UIcon name="i-lucide-chevron-right" />
+                  <strong>{{ activeSection.label }}</strong>
+                </p>
+              </div>
+
+              <p class="topbar__subcopy">
+                {{ activeSection.caption }}
               </p>
             </div>
 
             <div class="topbar__actions">
-              <span class="topbar__chip">{{ todayLabel }}</span>
-              <span class="topbar__chip">Apache ECharts + GSAP</span>
+              <label class="topbar-search">
+                <UIcon name="i-lucide-search" />
+                <input
+                  type="text"
+                  :placeholder="searchPlaceholder"
+                >
+              </label>
+
+              <button
+                type="button"
+                class="topbar-icon"
+                aria-label="Notifications"
+              >
+                <UIcon name="i-lucide-bell" />
+              </button>
+
+              <button
+                type="button"
+                class="topbar-icon"
+                aria-label="Settings"
+              >
+                <UIcon name="i-lucide-settings-2" />
+              </button>
+
+              <button
+                type="button"
+                class="topbar-icon"
+                aria-label="Help"
+              >
+                <UIcon name="i-lucide-circle-help" />
+              </button>
+
               <PortalRunQuickButton />
+
+              <div
+                class="topbar-avatar"
+                aria-hidden="true"
+              >
+                SC
+              </div>
             </div>
           </header>
 
