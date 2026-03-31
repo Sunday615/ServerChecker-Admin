@@ -80,16 +80,17 @@ const triggerRun = async () => {
 
 <template>
   <div class="topbar-run">
-    <UButton
+    <PortalActionButton
       icon="i-lucide-play"
-      color="primary"
+      tone="primary"
+      size="md"
       :loading="isSubmitting || state.status === 'RUNNING'"
       :disabled="isSubmitting || state.status === 'RUNNING'"
       class="topbar-run__button"
       @click="triggerRun"
     >
       {{ buttonLabel }}
-    </UButton>
+    </PortalActionButton>
 
     <p v-if="errorMessage" class="topbar-run__error">
       {{ errorMessage }}

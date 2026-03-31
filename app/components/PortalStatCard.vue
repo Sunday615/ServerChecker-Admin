@@ -24,7 +24,11 @@ const progressValue = computed(() => {
 </script>
 
 <template>
-  <article :class="['stat-card', `stat-card--${accent}`]">
+  <PortalCard
+    as="article"
+    flush
+    :class="['stat-card', `stat-card--${accent}`]"
+  >
     <div class="stat-card__top">
       <span class="stat-card__icon">
         <UIcon :name="icon" />
@@ -57,5 +61,5 @@ const progressValue = computed(() => {
         :style="{ width: `${progressValue}%` }"
       />
     </div>
-  </article>
+  </PortalCard>
 </template>

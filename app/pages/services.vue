@@ -36,15 +36,12 @@ const failingCount = computed(() => data.value.items.filter(item => item.status 
 <template>
   <div class="page-stack">
     <section class="page-hero">
-      <div>
-        <span class="section-kicker">Services</span>
-        <h1 class="page-title">
-          Service health
-        </h1>
-        <p class="page-copy">
-          Latest result for every configured service check across all hosts and sites.
-        </p>
-      </div>
+      <PortalSectionHeader
+        level="page"
+        eyebrow="Services"
+        title="Service health"
+        description="Latest result for every configured service check across all hosts and sites."
+      />
 
       <div class="hero-inline-stats">
         <span>{{ data.items.length }} services</span>
@@ -57,17 +54,14 @@ const failingCount = computed(() => data.value.items.filter(item => item.status 
     </div>
 
     <section class="card-grid">
-      <article v-for="item in data.items" :key="item.service_result_id" class="panel-card">
+      <PortalCard v-for="item in data.items" :key="item.service_result_id">
         <div class="panel-card__header">
-          <div>
-            <span class="section-kicker">{{ item.site_name }}</span>
-            <h2 class="panel-card__title">
-              {{ item.service_name }}
-            </h2>
-            <p class="panel-card__subtext">
-              {{ item.host_display_name || item.host_address }} • {{ formatDate(item.generated_at) }}
-            </p>
-          </div>
+          <PortalSectionHeader
+            level="section"
+            :eyebrow="item.site_name"
+            :title="item.service_name"
+            :description="`${item.host_display_name || item.host_address} • ${formatDate(item.generated_at)}`"
+          />
 
           <PortalStatusPill :status="item.status" />
         </div>
@@ -96,32 +90,28 @@ const failingCount = computed(() => data.value.items.filter(item => item.status 
         </p>
 
         <div class="action-row">
-          <UButton
+          <PortalActionButton
             v-if="item.service_report_html_path"
             :href="artifactUrl(item.service_report_html_path)"
-            external
             target="_blank"
-            rel="noopener noreferrer"
-            variant="soft"
-            color="neutral"
+            tone="secondary"
+            size="sm"
             icon="i-lucide-file-text"
           >
             HTML
-          </UButton>
-          <UButton
+          </PortalActionButton>
+          <PortalActionButton
             v-if="item.service_screenshot_file"
             :href="artifactUrl(item.service_screenshot_file)"
-            external
             target="_blank"
-            rel="noopener noreferrer"
-            variant="soft"
-            color="neutral"
+            tone="secondary"
+            size="sm"
             icon="i-lucide-image"
           >
             PNG
-          </UButton>
+          </PortalActionButton>
         </div>
-      </article>
+      </PortalCard>
     </section>
   </div>
 </template>

@@ -120,14 +120,13 @@ const triggerRun = async () => {
 </script>
 
 <template>
-  <section class="run-panel">
+  <PortalCard as="section" class="run-panel">
     <div class="run-panel__header">
-      <div>
-        <span class="section-kicker">Manual Run</span>
-        <h2 class="run-panel__title">
-          Trigger Checker
-        </h2>
-      </div>
+      <PortalSectionHeader
+        level="card"
+        eyebrow="Manual Run"
+        title="Trigger Checker"
+      />
 
       <PortalStatusPill :status="state.status" />
     </div>
@@ -147,16 +146,17 @@ const triggerRun = async () => {
       </div>
     </div>
 
-    <UButton
+    <PortalActionButton
       icon="i-lucide-play"
-      color="primary"
+      tone="primary"
+      size="md"
       :loading="isSubmitting || state.status === 'RUNNING'"
       :disabled="isSubmitting || state.status === 'RUNNING'"
       class="run-panel__button"
       @click="triggerRun"
     >
       {{ state.status === 'RUNNING' ? 'Running check...' : 'Run Check' }}
-    </UButton>
+    </PortalActionButton>
 
     <p v-if="errorMessage" class="run-panel__error">
       {{ errorMessage }}
@@ -165,5 +165,5 @@ const triggerRun = async () => {
     <p v-else-if="failureText" class="run-panel__error">
       {{ failureText }}
     </p>
-  </section>
+  </PortalCard>
 </template>

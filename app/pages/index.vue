@@ -369,15 +369,13 @@ onBeforeUnmount(() => {
 <template>
   <div class="page-stack dashboard-page">
     <section class="page-hero dashboard-hero">
-      <div class="dashboard-hero__copy">
-        <span class="section-kicker">Current Risk</span>
-        <h2 class="page-title">
-          Live threat posture across service and web monitoring.
-        </h2>
-        <p class="page-copy">
-          Backend snapshots from the Python checker are rendered as a modern dark response console with risk scoring, threat mix, hotspot tracking, and artifact access.
-        </p>
-      </div>
+      <PortalSectionHeader
+        class="dashboard-hero__copy"
+        level="page"
+        eyebrow="Current Risk"
+        title="Live threat posture across service and web monitoring."
+        description="Backend snapshots from the Python checker are rendered as a modern dark response console with risk scoring, threat mix, hotspot tracking, and artifact access."
+      />
 
       <div class="dashboard-hero__actions">
         <span class="toolbar-pill">Daily sync</span>
@@ -385,36 +383,35 @@ onBeforeUnmount(() => {
         <span class="toolbar-pill">{{ dateRangeLabel }}</span>
         <span class="toolbar-pill">{{ reportCount }} files</span>
 
-        <UButton
-          color="primary"
+        <PortalActionButton
+          tone="primary"
+          size="md"
           icon="i-lucide-refresh-cw"
           @click="refreshAll"
         >
           Refresh data
-        </UButton>
+        </PortalActionButton>
 
-        <UButton
+        <PortalActionButton
           v-if="latestArtifactHref"
           :href="latestArtifactHref"
-          external
           target="_blank"
-          rel="noopener noreferrer"
-          variant="soft"
-          color="neutral"
+          tone="secondary"
+          size="md"
           icon="i-lucide-folder-open"
         >
           Open latest file
-        </UButton>
+        </PortalActionButton>
 
-        <UButton
+        <PortalActionButton
           v-else
           to="/reports"
-          variant="soft"
-          color="neutral"
+          tone="secondary"
+          size="md"
           icon="i-lucide-files"
         >
           View files
-        </UButton>
+        </PortalActionButton>
       </div>
     </section>
 
@@ -448,39 +445,42 @@ onBeforeUnmount(() => {
       :failing-web-count="data.failingWebCount"
     />
 
-    <section class="table-card panel-card">
+    <PortalCard class="table-card">
       <div class="panel-card__header">
-        <div>
-          <span class="section-kicker">Threat Details</span>
-          <h2 class="panel-card__title">
-            Active findings
-          </h2>
-          <p class="panel-card__subtext">
-            Investigate failing service channels and browser targets pulled from the latest synchronized run data.
-          </p>
-        </div>
+        <PortalSectionHeader
+          level="section"
+          eyebrow="Threat Details"
+          title="Active findings"
+          description="Investigate failing service channels and browser targets pulled from the latest synchronized run data."
+        />
 
         <div class="section-heading__actions">
-          <NuxtLink
+          <PortalActionButton
             to="/services"
-            class="table-link table-link--ghost"
+            tone="ghost"
+            size="sm"
+            icon="i-lucide-triangle-alert"
           >
             Service alerts
-          </NuxtLink>
+          </PortalActionButton>
 
-          <NuxtLink
+          <PortalActionButton
             to="/web-checks"
-            class="table-link table-link--ghost"
+            tone="ghost"
+            size="sm"
+            icon="i-lucide-globe"
           >
             Web threats
-          </NuxtLink>
+          </PortalActionButton>
 
-          <NuxtLink
+          <PortalActionButton
             to="/reports"
-            class="table-link table-link--ghost"
+            tone="ghost"
+            size="sm"
+            icon="i-lucide-folder-open"
           >
             Files
-          </NuxtLink>
+          </PortalActionButton>
         </div>
       </div>
 
@@ -550,15 +550,16 @@ onBeforeUnmount(() => {
               </td>
 
               <td class="portal-table__actions">
-                <a
+                <PortalActionButton
                   v-if="row.href"
                   :href="row.href"
                   target="_blank"
-                  rel="noopener noreferrer"
-                  class="table-link"
+                  tone="secondary"
+                  size="sm"
+                  icon="i-lucide-arrow-up-right"
                 >
                   Open
-                </a>
+                </PortalActionButton>
 
                 <span
                   v-else
@@ -580,6 +581,6 @@ onBeforeUnmount(() => {
           </tbody>
         </table>
       </div>
-    </section>
+    </PortalCard>
   </div>
 </template>

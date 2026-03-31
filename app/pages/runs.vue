@@ -34,24 +34,21 @@ const { data, refresh } = await useFetch<RunsResponse>('/api/runs', {
 <template>
   <div class="page-stack">
     <section class="page-hero">
-      <div>
-        <span class="section-kicker">Runs</span>
-        <h1 class="page-title">
-          Run history
-        </h1>
-        <p class="page-copy">
-          Review each execution from the checker, including service counts, web counts, and report output.
-        </p>
-      </div>
+      <PortalSectionHeader
+        level="page"
+        eyebrow="Runs"
+        title="Run history"
+        description="Review each execution from the checker, including service counts, web counts, and report output."
+      />
 
-      <UButton
+      <PortalActionButton
         icon="i-lucide-refresh-cw"
-        color="neutral"
-        variant="soft"
+        tone="secondary"
+        size="md"
         @click="refresh()"
       >
         Refresh
-      </UButton>
+      </PortalActionButton>
     </section>
 
     <div v-if="!data.databaseOnline && data.message" class="message-banner message-banner--warning">
@@ -59,17 +56,14 @@ const { data, refresh } = await useFetch<RunsResponse>('/api/runs', {
     </div>
 
     <section class="card-grid">
-      <article v-for="run in data.items" :key="run.run_key" class="panel-card">
+      <PortalCard v-for="run in data.items" :key="run.run_key">
         <div class="panel-card__header">
-          <div>
-            <span class="section-kicker">Checker Run</span>
-            <h2 class="panel-card__title">
-              {{ run.run_key }}
-            </h2>
-            <p class="panel-card__subtext">
-              {{ formatDate(run.generated_at) }}
-            </p>
-          </div>
+          <PortalSectionHeader
+            level="section"
+            eyebrow="Checker Run"
+            :title="run.run_key"
+            :description="formatDate(run.generated_at)"
+          />
 
           <PortalStatusPill :status="run.overall_status" />
         </div>
@@ -102,20 +96,18 @@ const { data, refresh } = await useFetch<RunsResponse>('/api/runs', {
         </div>
 
         <div class="action-row">
-          <UButton
+          <PortalActionButton
             v-if="run.web_summary_report_path"
             :href="artifactUrl(run.web_summary_report_path)"
-            external
             target="_blank"
-            rel="noopener noreferrer"
-            variant="soft"
-            color="neutral"
+            tone="secondary"
+            size="sm"
             icon="i-lucide-file-text"
           >
             Web summary
-          </UButton>
+          </PortalActionButton>
         </div>
-      </article>
+      </PortalCard>
     </section>
   </div>
 </template>

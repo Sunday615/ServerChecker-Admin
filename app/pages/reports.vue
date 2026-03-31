@@ -31,38 +31,34 @@ const { data, refresh } = await useFetch<ReportsResponse>('/api/reports/latest',
 <template>
   <div class="page-stack">
     <section class="page-hero">
-      <div>
-        <span class="section-kicker">Artifacts</span>
-        <h1 class="page-title">
-          Reports
-        </h1>
-        <p class="page-copy">
-          Open the latest generated HTML summaries and screenshots from the checker output.
-        </p>
-      </div>
+      <PortalSectionHeader
+        level="page"
+        eyebrow="Artifacts"
+        title="Reports"
+        description="Open the latest generated HTML summaries and screenshots from the checker output."
+      />
 
-      <UButton
+      <PortalActionButton
         icon="i-lucide-refresh-cw"
-        color="neutral"
-        variant="soft"
+        tone="secondary"
+        size="md"
         @click="refresh()"
       >
         Refresh
-      </UButton>
+      </PortalActionButton>
     </section>
 
     <div v-if="!data.databaseOnline && data.message" class="message-banner message-banner--warning">
       {{ data.message }}
     </div>
 
-    <article class="panel-card">
+    <PortalCard>
       <div class="panel-card__header">
-        <div>
-          <span class="section-kicker">Latest Output</span>
-          <h2 class="panel-card__title">
-            Report bundle
-          </h2>
-        </div>
+        <PortalSectionHeader
+          level="section"
+          eyebrow="Latest Output"
+          title="Report bundle"
+        />
 
         <PortalStatusPill :status="data.latestRun?.overall_status" />
       </div>
@@ -79,56 +75,51 @@ const { data, refresh } = await useFetch<ReportsResponse>('/api/reports/latest',
       </div>
 
       <div v-if="data.latestRun?.web_summary_report_path" class="action-row">
-        <UButton
+        <PortalActionButton
           :href="artifactUrl(data.latestRun.web_summary_report_path)"
-          external
           target="_blank"
-          rel="noopener noreferrer"
+          tone="primary"
+          size="md"
           icon="i-lucide-file-text"
         >
           Open web summary
-        </UButton>
+        </PortalActionButton>
       </div>
-    </article>
+    </PortalCard>
 
     <section class="card-grid">
-      <article v-for="report in data.siteReports" :key="report.site_name" class="panel-card">
+      <PortalCard v-for="report in data.siteReports" :key="report.site_name">
         <div class="panel-card__header">
-          <div>
-            <span class="section-kicker">Site report</span>
-            <h2 class="panel-card__title">
-              {{ report.site_name }}
-            </h2>
-          </div>
+          <PortalSectionHeader
+            level="section"
+            eyebrow="Site report"
+            :title="report.site_name"
+          />
         </div>
 
         <div class="action-row">
-          <UButton
+          <PortalActionButton
             v-if="report.report_html_path"
             :href="artifactUrl(report.report_html_path)"
-            external
             target="_blank"
-            rel="noopener noreferrer"
-            variant="soft"
-            color="neutral"
+            tone="secondary"
+            size="sm"
             icon="i-lucide-file-text"
           >
             HTML
-          </UButton>
-          <UButton
+          </PortalActionButton>
+          <PortalActionButton
             v-if="report.summary_screenshot_file"
             :href="artifactUrl(report.summary_screenshot_file)"
-            external
             target="_blank"
-            rel="noopener noreferrer"
-            variant="soft"
-            color="neutral"
+            tone="secondary"
+            size="sm"
             icon="i-lucide-image"
           >
             PNG
-          </UButton>
+          </PortalActionButton>
         </div>
-      </article>
+      </PortalCard>
     </section>
   </div>
 </template>

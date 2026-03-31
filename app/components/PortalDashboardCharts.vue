@@ -567,17 +567,14 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="dashboard-analytics">
-    <article class="panel-card chart-card chart-card--summary">
+    <PortalCard class="chart-card chart-card--summary">
       <div class="chart-card__header">
-        <div>
-          <span class="section-kicker">Threat Summary</span>
-          <h2 class="panel-card__title">
-            Pressure across recent runs
-          </h2>
-          <p class="chart-card__note">
-            {{ summaryNote }}
-          </p>
-        </div>
+        <PortalSectionHeader
+          level="section"
+          eyebrow="Threat Summary"
+          title="Pressure across recent runs"
+          :description="summaryNote"
+        />
 
         <span class="chart-card__chip">Daily</span>
       </div>
@@ -586,17 +583,16 @@ onBeforeUnmount(() => {
         ref="summaryChartRef"
         class="chart-card__canvas chart-card__canvas--summary"
       />
-    </article>
+    </PortalCard>
 
     <div class="dashboard-analytics__stack">
-      <article class="panel-card chart-card chart-card--score">
+      <PortalCard class="chart-card chart-card--score">
         <div class="chart-card__header">
-          <div>
-            <span class="section-kicker">Risk Score</span>
-            <h2 class="panel-card__title">
-              Escalation score
-            </h2>
-          </div>
+          <PortalSectionHeader
+            level="card"
+            eyebrow="Risk Score"
+            title="Escalation score"
+          />
 
           <span class="score-card__badge">{{ riskBand }}</span>
         </div>
@@ -605,16 +601,15 @@ onBeforeUnmount(() => {
           ref="scoreChartRef"
           class="chart-card__canvas chart-card__canvas--score"
         />
-      </article>
+      </PortalCard>
 
-      <article class="panel-card chart-card chart-card--mix">
+      <PortalCard class="chart-card chart-card--mix">
         <div class="chart-card__header">
-          <div>
-            <span class="section-kicker">Threat Mix</span>
-            <h2 class="panel-card__title">
-              Attack surface split
-            </h2>
-          </div>
+          <PortalSectionHeader
+            level="card"
+            eyebrow="Threat Mix"
+            title="Attack surface split"
+          />
         </div>
 
         <div
@@ -633,20 +628,17 @@ onBeforeUnmount(() => {
             <span>{{ item.value }}</span>
           </span>
         </div>
-      </article>
+      </PortalCard>
     </div>
 
-    <article class="panel-card watchlist-card">
+    <PortalCard class="watchlist-card">
       <div class="panel-card__header">
-        <div>
-          <span class="section-kicker">Threat by Site</span>
-          <h2 class="panel-card__title">
-            Highest pressure zones
-          </h2>
-          <p class="panel-card__subtext">
-            {{ hotspotNote }}
-          </p>
-        </div>
+        <PortalSectionHeader
+          level="section"
+          eyebrow="Threat by Site"
+          title="Highest pressure zones"
+          :description="hotspotNote"
+        />
 
         <span class="chart-card__chip">Live</span>
       </div>
@@ -682,6 +674,6 @@ onBeforeUnmount(() => {
           <p>No hotspot pressure is visible in the latest snapshot.</p>
         </div>
       </div>
-    </article>
+    </PortalCard>
   </section>
 </template>

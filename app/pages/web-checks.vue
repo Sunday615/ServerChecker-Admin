@@ -33,15 +33,12 @@ const failingCount = computed(() => data.value.items.filter(item => item.status 
 <template>
   <div class="page-stack">
     <section class="page-hero">
-      <div>
-        <span class="section-kicker">Web Monitor</span>
-        <h1 class="page-title">
-          Web checks
-        </h1>
-        <p class="page-copy">
-          Latest screenshot and browser-check results for each configured web target.
-        </p>
-      </div>
+      <PortalSectionHeader
+        level="page"
+        eyebrow="Web Monitor"
+        title="Web checks"
+        description="Latest screenshot and browser-check results for each configured web target."
+      />
 
       <div class="hero-inline-stats">
         <span>{{ data.items.length }} targets</span>
@@ -54,17 +51,14 @@ const failingCount = computed(() => data.value.items.filter(item => item.status 
     </div>
 
     <section class="card-grid">
-      <article v-for="item in data.items" :key="item.web_result_id" class="panel-card">
+      <PortalCard v-for="item in data.items" :key="item.web_result_id">
         <div class="panel-card__header">
-          <div>
-            <span class="section-kicker">{{ item.site_name }}</span>
-            <h2 class="panel-card__title">
-              {{ item.target_name }}
-            </h2>
-            <p class="panel-card__subtext">
-              {{ formatDate(item.generated_at) }}
-            </p>
-          </div>
+          <PortalSectionHeader
+            level="section"
+            :eyebrow="item.site_name"
+            :title="item.target_name"
+            :description="formatDate(item.generated_at)"
+          />
 
           <PortalStatusPill :status="item.status" />
         </div>
@@ -89,32 +83,28 @@ const failingCount = computed(() => data.value.items.filter(item => item.status 
         </p>
 
         <div class="action-row">
-          <UButton
+          <PortalActionButton
             v-if="item.web_report_html_path"
             :href="artifactUrl(item.web_report_html_path)"
-            external
             target="_blank"
-            rel="noopener noreferrer"
-            variant="soft"
-            color="neutral"
+            tone="secondary"
+            size="sm"
             icon="i-lucide-file-text"
           >
             HTML
-          </UButton>
-          <UButton
+          </PortalActionButton>
+          <PortalActionButton
             v-if="item.screenshot_file"
             :href="artifactUrl(item.screenshot_file)"
-            external
             target="_blank"
-            rel="noopener noreferrer"
-            variant="soft"
-            color="neutral"
+            tone="secondary"
+            size="sm"
             icon="i-lucide-image"
           >
             PNG
-          </UButton>
+          </PortalActionButton>
         </div>
-      </article>
+      </PortalCard>
     </section>
   </div>
 </template>
