@@ -59,6 +59,7 @@ const activeStatus = ref<StatusTab>('ALL')
 const sortBy = ref<SortMode>('newest')
 const density = ref<DensityMode>('comfortable')
 const onlyWithHtml = ref(false)
+const currentPage = ref(1)
 
 const items = computed(() => data.value.items || [])
 
@@ -191,14 +192,27 @@ const filteredItems = computed(() => {
   })
 })
 
-const groupedSections = computed<GallerySection[]>(() => {
+const pageSize = computed(() => {
+  return density.value === 'compact' ? 12 : 8
+})
+
+const pageCount = computed(() => {
+  return Math.max(Math.ceil(filteredItems.value.length / pageSize.value), 1)
+})
+
+const paginatedItems = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredItems.value.slice(start, start + pageSize.value)
+})
+
+const pagedSections = computed<GallerySection[]>(() => {
   const orderedZones = activeZone.value === 'ALL'
     ? ['DC', 'DR', 'OTHER'] as const
     : [activeZone.value]
   const sections: GallerySection[] = []
 
   for (const zone of orderedZones) {
-    const sectionItems = filteredItems.value.filter(item => item.zone === zone)
+    const sectionItems = paginatedItems.value.filter(item => item.zone === zone)
 
     if (!sectionItems.length) {
       continue
@@ -209,8 +223,8 @@ const groupedSections = computed<GallerySection[]>(() => {
       zone,
       title: zone === 'OTHER' ? 'Other gallery' : `${zone} gallery`,
       description: zone === 'OTHER'
-        ? 'Assets that are not mapped to DC or DR.'
-        : `${sectionItems.length} screenshot${sectionItems.length === 1 ? '' : 's'} in the ${zone} room.`,
+        ? 'Assets on this page that are not mapped to DC or DR.'
+        : `${sectionItems.length} screenshot${sectionItems.length === 1 ? '' : 's'} on this page in the ${zone} room.`,
       items: sectionItems
     })
   }
@@ -241,7 +255,16 @@ const clearFilters = () => {
   sortBy.value = 'newest'
   density.value = 'comfortable'
   onlyWithHtml.value = false
+  currentPage.value = 1
 }
+
+watch([searchText, activeZone, activeSource, activeStatus, sortBy, density, onlyWithHtml], () => {
+  currentPage.value = 1
+})
+
+watch([() => filteredItems.value.length, pageCount], () => {
+  currentPage.value = Math.min(currentPage.value, pageCount.value) || 1
+})
 </script>
 
 <template>
@@ -474,9 +497,20 @@ const clearFilters = () => {
           </div>
         </PortalCard>
 
-        <template v-if="groupedSections.length">
+        <PortalPagination
+          v-if="filteredItems.length"
+          v-model:page="currentPage"
+          class="page-pagination"
+          :page-count="pageCount"
+          :total-items="filteredItems.length"
+          :page-size="pageSize"
+          item-label="screenshots"
+          compact
+        />
+
+        <template v-if="pagedSections.length">
           <section
-            v-for="section in groupedSections"
+            v-for="section in pagedSections"
             :key="section.id"
             class="gallery-section"
           >
@@ -551,6 +585,15 @@ const clearFilters = () => {
               </PortalCard>
             </div>
           </section>
+
+          <PortalPagination
+            v-model:page="currentPage"
+            class="page-pagination"
+            :page-count="pageCount"
+            :total-items="filteredItems.length"
+            :page-size="pageSize"
+            item-label="screenshots"
+          />
         </template>
 
         <PortalCard

@@ -835,6 +835,75 @@ table {
   color: #ffd88f;
 }
 
+.page-pagination {
+  margin-top: 2px;
+}
+
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--portal-border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  min-width: 0;
+}
+
+.pagination-bar--compact {
+  padding: 14px 16px;
+}
+
+.pagination-bar__meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.pagination-bar__meta strong,
+.pagination-bar__page {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.pagination-bar__meta strong {
+  color: var(--portal-text);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.pagination-bar__meta span {
+  color: var(--portal-text-soft);
+  font-size: 0.84rem;
+}
+
+.pagination-bar__controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.pagination-bar__page {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--portal-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--portal-text-soft);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .dashboard-stat-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1926,7 +1995,8 @@ table {
   .dashboard-hero__actions,
   .gallery-hero__actions,
   .section-heading__actions,
-  .table-toolbar {
+  .table-toolbar,
+  .pagination-bar {
     width: 100%;
     justify-content: flex-start;
   }
@@ -1943,6 +2013,15 @@ table {
 
   .topbar-search {
     min-width: 100%;
+  }
+
+  .pagination-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pagination-bar__controls {
+    justify-content: space-between;
   }
 }
 
@@ -1977,6 +2056,19 @@ table {
 
   .table-link--ghost {
     flex: 1 1 auto;
+  }
+
+  .pagination-bar__controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pagination-bar__controls > .action-button {
+    width: 100%;
+  }
+
+  .pagination-bar__page {
+    width: 100%;
   }
 
   .portal-table {

@@ -28,6 +28,21 @@ const { data, refresh } = await useFetch<WebChecksResponse>('/api/web-checks/lat
 })
 
 const failingCount = computed(() => data.value.items.filter(item => item.status !== 'PASS').length)
+const currentPage = ref(1)
+const pageSize = 6
+
+const pageCount = computed(() => {
+  return Math.max(Math.ceil(data.value.items.length / pageSize), 1)
+})
+
+const paginatedItems = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  return data.value.items.slice(start, start + pageSize)
+})
+
+watch([() => data.value.items.length, pageCount], () => {
+  currentPage.value = Math.min(currentPage.value, pageCount.value) || 1
+})
 </script>
 
 <template>
@@ -50,8 +65,19 @@ const failingCount = computed(() => data.value.items.filter(item => item.status 
       {{ data.message }}
     </div>
 
+    <PortalPagination
+      v-if="data.items.length"
+      v-model:page="currentPage"
+      class="page-pagination"
+      :page-count="pageCount"
+      :total-items="data.items.length"
+      :page-size="pageSize"
+      item-label="targets"
+      compact
+    />
+
     <section class="card-grid">
-      <PortalCard v-for="item in data.items" :key="item.web_result_id">
+      <PortalCard v-for="item in paginatedItems" :key="item.web_result_id">
         <div class="panel-card__header">
           <PortalSectionHeader
             level="section"
@@ -106,5 +132,15 @@ const failingCount = computed(() => data.value.items.filter(item => item.status 
         </div>
       </PortalCard>
     </section>
+
+    <PortalPagination
+      v-if="data.items.length"
+      v-model:page="currentPage"
+      class="page-pagination"
+      :page-count="pageCount"
+      :total-items="data.items.length"
+      :page-size="pageSize"
+      item-label="targets"
+    />
   </div>
 </template>
