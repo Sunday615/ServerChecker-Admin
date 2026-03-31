@@ -143,7 +143,7 @@ const toNumber = (value: number | string | null | undefined) => {
 
 const formatShortDate = (value: string | null | undefined) => {
   if (!value) {
-    return 'Waiting for first sync'
+    return 'Awaiting first sync'
   }
 
   const date = new Date(value)
@@ -167,6 +167,7 @@ const totalMonitors = computed(() => totalServiceCount.value + totalWebCount.val
 const stableServiceCount = computed(() => Math.max(totalServiceCount.value - data.value.failingServiceCount, 0))
 const stableWebCount = computed(() => Math.max(totalWebCount.value - data.value.failingWebCount, 0))
 const totalPassing = computed(() => stableServiceCount.value + stableWebCount.value)
+const exposedSiteCount = computed(() => data.value.failingSites.filter(site => toNumber(site.failing_services) > 0).length)
 
 const serviceHealth = computed(() => {
   if (!totalServiceCount.value) {
@@ -192,6 +193,9 @@ const overallHealth = computed(() => {
   return Math.round((totalPassing.value / totalMonitors.value) * 100)
 })
 
+const serviceRisk = computed(() => Math.max(100 - serviceHealth.value, 0))
+const webRisk = computed(() => Math.max(100 - webHealth.value, 0))
+
 const latestArtifactHref = computed(() => {
   if (reports.value.latestRun?.web_summary_report_path) {
     return artifactUrl(reports.value.latestRun.web_summary_report_path)
@@ -213,7 +217,7 @@ const reportCount = computed(() => {
 const lastSyncedLabel = computed(() => {
   return latestRun.value?.generated_at
     ? `Synced ${formatShortDate(latestRun.value.generated_at)}`
-    : 'Waiting for first sync'
+    : 'Awaiting first sync'
 })
 
 const dateRangeLabel = computed(() => {
@@ -230,58 +234,46 @@ const dateRangeLabel = computed(() => {
 })
 
 const overviewCards = computed<MetricCard[]>(() => {
-  const serviceAlertText = data.value.failingServiceCount
-    ? `${data.value.failingServiceCount} service alerts active`
-    : 'All service checks are healthy'
-
-  const webAlertText = data.value.failingWebCount
-    ? `${data.value.failingWebCount} web alerts active`
-    : 'All web targets are healthy'
-
-  const healthText = totalIssues.value
-    ? `${totalIssues.value} items need attention`
-    : 'No active incidents right now'
-
   return [
     {
-      label: 'Sites monitored',
-      value: String(data.value.totalSiteCount),
-      hint: 'Connected sites in the checker database',
-      detail: `${toNumber(latestRun.value?.total_hosts)} hosts in the latest run`,
-      detailTone: 'neutral',
-      progress: data.value.totalSiteCount ? 100 : 0,
-      icon: 'i-lucide-buildings',
-      accent: 'soft'
-    },
-    {
-      label: 'Service checks',
-      value: String(totalServiceCount.value),
-      hint: 'SSH and profile checks from the backend runner',
-      detail: serviceAlertText,
-      detailTone: data.value.failingServiceCount ? 'danger' : 'success',
-      progress: serviceHealth.value,
-      icon: 'i-lucide-server',
-      accent: 'soft'
-    },
-    {
-      label: 'Web checks',
-      value: String(totalWebCount.value),
-      hint: 'Browser steps and screenshot journeys',
-      detail: webAlertText,
-      detailTone: data.value.failingWebCount ? 'danger' : 'success',
-      progress: webHealth.value,
-      icon: 'i-lucide-monitor-check',
-      accent: 'soft'
-    },
-    {
-      label: 'Platform health',
-      value: `${overallHealth.value}%`,
-      hint: 'Combined healthy rate across every monitor',
-      detail: healthText,
+      label: 'Total Threats',
+      value: String(totalIssues.value),
+      hint: 'Combined failing service and browser checks',
+      detail: `${data.value.failingServiceCount} infra • ${data.value.failingWebCount} web`,
       detailTone: totalIssues.value ? 'danger' : 'success',
-      progress: overallHealth.value,
-      icon: 'i-lucide-shield-check',
+      progress: totalMonitors.value ? Math.min(Math.round((totalIssues.value / totalMonitors.value) * 100), 100) : 0,
+      icon: 'i-lucide-shield-alert',
       accent: 'primary'
+    },
+    {
+      label: 'Service Risk',
+      value: `${serviceRisk.value}%`,
+      hint: 'Infrastructure attack surface from live checks',
+      detail: `${data.value.failingServiceCount} service channels exposed`,
+      detailTone: data.value.failingServiceCount ? 'danger' : 'success',
+      progress: serviceRisk.value,
+      icon: 'i-lucide-server-crash',
+      accent: 'soft'
+    },
+    {
+      label: 'Web Risk',
+      value: `${webRisk.value}%`,
+      hint: 'Browser journeys and target URLs under pressure',
+      detail: `${data.value.failingWebCount} browser flows flagged`,
+      detailTone: data.value.failingWebCount ? 'danger' : 'success',
+      progress: webRisk.value,
+      icon: 'i-lucide-globe-lock',
+      accent: 'soft'
+    },
+    {
+      label: 'Secure Coverage',
+      value: `${overallHealth.value}%`,
+      hint: 'Healthy coverage across monitored assets',
+      detail: `${totalPassing.value}/${Math.max(totalMonitors.value, 0)} checks stable • ${exposedSiteCount.value} hot sites`,
+      detailTone: totalIssues.value ? 'neutral' : 'success',
+      progress: overallHealth.value,
+      icon: 'i-lucide-badge-check',
+      accent: 'soft'
     }
   ]
 })
@@ -321,7 +313,7 @@ const incidentRows = computed<IncidentRow[]>(() => {
 
   return [...serviceItems, ...webItems]
     .sort((left, right) => new Date(right.generatedAt).getTime() - new Date(left.generatedAt).getTime())
-    .slice(0, 10)
+    .slice(0, 12)
 })
 
 const issueTabs = computed(() => {
@@ -331,7 +323,7 @@ const issueTabs = computed(() => {
   return [
     {
       id: 'all' as const,
-      label: 'All incidents',
+      label: 'All threats',
       count: incidentRows.value.length
     },
     {
@@ -341,7 +333,7 @@ const issueTabs = computed(() => {
     },
     {
       id: 'web' as const,
-      label: 'Web checks',
+      label: 'Web threats',
       count: webCount
     }
   ]
@@ -376,26 +368,22 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="page-stack dashboard-page">
-    <section class="page-hero promo-banner panel-card">
-      <div class="promo-banner__copy">
-        <span class="promo-banner__eyebrow">Realtime monitoring portal</span>
-        <h1 class="promo-banner__title">
-          Unified workspace for service health, browser checks, and report artifacts.
-        </h1>
-        <p class="promo-banner__text">
-          This web portal now reads directly from the backend summary endpoints, then presents the data with Apache ECharts and GSAP inside a cleaner admin dashboard layout.
+    <section class="page-hero dashboard-hero">
+      <div class="dashboard-hero__copy">
+        <span class="section-kicker">Current Risk</span>
+        <h2 class="page-title">
+          Live threat posture across service and web monitoring.
+        </h2>
+        <p class="page-copy">
+          Backend snapshots from the Python checker are rendered as a modern dark response console with risk scoring, threat mix, hotspot tracking, and artifact access.
         </p>
-
-        <div class="promo-banner__meta">
-          <span class="promo-pill">{{ latestRun ? latestRun.run_key : 'Awaiting first run' }}</span>
-          <span class="promo-pill">{{ data.totalSiteCount }} sites</span>
-          <span class="promo-pill">{{ totalMonitors }} monitors</span>
-          <span class="promo-pill">{{ lastSyncedLabel }}</span>
-        </div>
       </div>
 
-      <div class="promo-banner__actions">
-        <PortalStatusPill :status="latestRun?.overall_status || 'IDLE'" />
+      <div class="dashboard-hero__actions">
+        <span class="toolbar-pill">Daily sync</span>
+        <span class="toolbar-pill">{{ lastSyncedLabel }}</span>
+        <span class="toolbar-pill">{{ dateRangeLabel }}</span>
+        <span class="toolbar-pill">{{ reportCount }} files</span>
 
         <UButton
           color="primary"
@@ -413,9 +401,9 @@ onBeforeUnmount(() => {
           rel="noopener noreferrer"
           variant="soft"
           color="neutral"
-          icon="i-lucide-file-text"
+          icon="i-lucide-folder-open"
         >
-          Open latest report
+          Open latest file
         </UButton>
 
         <UButton
@@ -425,7 +413,7 @@ onBeforeUnmount(() => {
           color="neutral"
           icon="i-lucide-files"
         >
-          View reports
+          View files
         </UButton>
       </div>
     </section>
@@ -436,29 +424,6 @@ onBeforeUnmount(() => {
     >
       {{ data.message }}
     </div>
-
-    <section class="section-heading">
-      <div>
-        <span class="section-kicker">Overview</span>
-        <h2 class="section-title">
-          Monitoring snapshot
-        </h2>
-      </div>
-
-      <div class="section-heading__actions">
-        <span class="toolbar-pill">{{ dateRangeLabel }}</span>
-        <span class="toolbar-pill">Reports {{ reportCount }}</span>
-
-        <UButton
-          to="/reports"
-          variant="soft"
-          color="neutral"
-          icon="i-lucide-download"
-        >
-          Export
-        </UButton>
-      </div>
-    </section>
 
     <section class="dashboard-stat-grid">
       <PortalStatCard
@@ -486,12 +451,12 @@ onBeforeUnmount(() => {
     <section class="table-card panel-card">
       <div class="panel-card__header">
         <div>
-          <span class="section-kicker">Recent activity</span>
+          <span class="section-kicker">Threat Details</span>
           <h2 class="panel-card__title">
-            Latest incidents
+            Active findings
           </h2>
           <p class="panel-card__subtext">
-            Failing service checks and browser targets from the most recent backend snapshots.
+            Investigate failing service channels and browser targets pulled from the latest synchronized run data.
           </p>
         </div>
 
@@ -500,21 +465,21 @@ onBeforeUnmount(() => {
             to="/services"
             class="table-link table-link--ghost"
           >
-            View services
+            Service alerts
           </NuxtLink>
 
           <NuxtLink
             to="/web-checks"
             class="table-link table-link--ghost"
           >
-            View web checks
+            Web threats
           </NuxtLink>
 
           <NuxtLink
             to="/reports"
             class="table-link table-link--ghost"
           >
-            Reports
+            Files
           </NuxtLink>
         </div>
       </div>
@@ -534,7 +499,7 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="table-actions">
-          <span class="toolbar-pill">{{ incidentRows.length }} live items</span>
+          <span class="toolbar-pill">{{ totalMonitors }} monitored assets</span>
         </div>
       </div>
 
@@ -542,12 +507,12 @@ onBeforeUnmount(() => {
         <table class="portal-table">
           <thead>
             <tr>
-              <th>Check</th>
+              <th>Threat vector</th>
               <th>Type</th>
               <th>Site</th>
               <th>Run key</th>
               <th>Endpoint</th>
-              <th>Updated</th>
+              <th>Detected</th>
               <th>Status</th>
               <th />
             </tr>
@@ -607,7 +572,7 @@ onBeforeUnmount(() => {
             <tr v-if="filteredRows.length === 0">
               <td colspan="8">
                 <div class="empty-state">
-                  <strong>No items in this view</strong>
+                  <strong>No threats in this slice</strong>
                   <span>Failing services and web checks will appear here as soon as the backend reports them.</span>
                 </div>
               </td>

@@ -17,9 +17,9 @@ export const usePortalMotion = (root: Ref<HTMLElement | null>) => {
 
     const select = (selector: string) => Array.from(shell.querySelectorAll<HTMLElement>(selector))
     const hero = select('.page-hero, .section-heading')
-    const topbar = select('.topbar')
+    const topbar = select('.topbar, .topbar__headline')
     const stats = select('.stat-card')
-    const panels = select('.panel-card, .issue-card, .info-card, .timeline-item, .tab-chip, .action-card, .table-card, .chart-card')
+    const panels = select('.panel-card, .issue-card, .info-card, .timeline-item, .tab-chip, .action-card, .table-card, .chart-card, .watchlist-card, .watchlist-item, .legend-item')
     const nav = select('.sidebar-nav__link')
     const runPanel = select('.run-panel, .topbar-run')
     const brand = select('.brand-block, .sidebar-store, .sidebar-profile')
@@ -77,7 +77,8 @@ export const usePortalMotion = (root: Ref<HTMLElement | null>) => {
       }, 0.12)
       .to(topbar, {
         y: 0,
-        opacity: 1
+        opacity: 1,
+        stagger: 0.04
       }, 0.16)
       .to(hero, {
         y: 0,

@@ -7,39 +7,39 @@ const navigationGroups = [
     label: 'General',
     items: [
       {
-        label: 'Dashboard',
-        caption: 'Overview',
+        label: 'Overview',
+        caption: 'Threat posture',
         to: '/',
         icon: 'i-lucide-layout-dashboard'
       },
       {
+        label: 'Issues',
+        caption: 'Service alerts',
+        to: '/services',
+        icon: 'i-lucide-triangle-alert'
+      },
+      {
         label: 'Runs',
-        caption: 'Execution history',
+        caption: 'Execution log',
         to: '/runs',
-        icon: 'i-lucide-history'
+        icon: 'i-lucide-activity'
       }
     ]
   },
   {
-    label: 'Monitoring',
+    label: 'Reports',
     items: [
       {
-        label: 'Services',
-        caption: 'Service health',
-        to: '/services',
-        icon: 'i-lucide-server'
-      },
-      {
-        label: 'Web Checks',
+        label: 'Web Threats',
         caption: 'Browser targets',
         to: '/web-checks',
-        icon: 'i-lucide-monitor-check'
+        icon: 'i-lucide-shield-alert'
       },
       {
-        label: 'Reports',
+        label: 'Files',
         caption: 'Artifacts',
         to: '/reports',
-        icon: 'i-lucide-files'
+        icon: 'i-lucide-folder-open'
       }
     ]
   }
@@ -64,8 +64,20 @@ const activeSection = computed<(typeof navigation)[number]>(() => {
   }) || fallbackSection
 })
 
+const topbarTitle = computed(() => {
+  return route.path === '/'
+    ? 'Welcome back, security team'
+    : activeSection.value.label
+})
+
+const topbarSubtitle = computed(() => {
+  return route.path === '/'
+    ? 'Security is a process, not a product.'
+    : activeSection.value.caption
+})
+
 const searchPlaceholder = computed(() => {
-  return `Search ${activeSection.value.label.toLowerCase()}, reports, or runs...`
+  return `Search issues, hosts, files, or ${activeSection.value.label.toLowerCase()}...`
 })
 
 useHead({
@@ -101,7 +113,7 @@ usePortalMotion(portalRoot)
             <NuxtLink
               to="/"
               class="brand-block__logo"
-              aria-label="Server Checker home"
+              aria-label="Server Guard home"
             >
               <span class="brand-block__mark">
                 <span class="brand-block__mark-dot" />
@@ -111,8 +123,8 @@ usePortalMotion(portalRoot)
               </span>
 
               <span class="brand-block__wordmark">
-                <strong>Server Portal</strong>
-                <small>checker workspace</small>
+                <strong>ServerGuard</strong>
+                <small>security console</small>
               </span>
             </NuxtLink>
 
@@ -126,14 +138,14 @@ usePortalMotion(portalRoot)
           </div>
 
           <div class="sidebar-store">
-            <span class="sidebar-meta-label">Workspace</span>
+            <span class="sidebar-meta-label">Cluster</span>
 
             <div class="sidebar-store__card">
-              <span class="sidebar-store__badge">SC</span>
+              <span class="sidebar-store__badge">SG</span>
 
               <div class="sidebar-store__content">
-                <strong>Server Checker</strong>
-                <span>Production portal</span>
+                <strong>Primary Cluster</strong>
+                <span>live threat monitoring</span>
               </div>
 
               <UIcon name="i-lucide-chevrons-up-down" />
@@ -170,12 +182,12 @@ usePortalMotion(portalRoot)
 
           <div class="sidebar-profile">
             <div class="sidebar-profile__avatar">
-              SC
+              OP
             </div>
 
             <div class="sidebar-profile__content">
-              <strong>Ops Console</strong>
-              <span>mysql + python runner</span>
+              <strong>Threat Ops</strong>
+              <span>dark response mode</span>
             </div>
 
             <UIcon name="i-lucide-chevrons-up-down" />
@@ -185,32 +197,14 @@ usePortalMotion(portalRoot)
         <section class="portal-main">
           <header class="topbar">
             <div class="topbar__context">
-              <div class="topbar__crumbs-row">
-                <button
-                  type="button"
-                  class="topbar-icon topbar-icon--ghost"
-                  aria-label="Previous"
-                >
-                  <UIcon name="i-lucide-chevron-left" />
-                </button>
+              <span class="topbar__eyebrow">Threat operations workspace</span>
 
-                <button
-                  type="button"
-                  class="topbar-icon topbar-icon--ghost"
-                  aria-label="Next"
-                >
-                  <UIcon name="i-lucide-chevron-right" />
-                </button>
-
-                <p class="topbar__crumbs">
-                  <span>Pages</span>
-                  <UIcon name="i-lucide-chevron-right" />
-                  <strong>{{ activeSection.label }}</strong>
-                </p>
-              </div>
+              <h1 class="topbar__headline">
+                {{ topbarTitle }}
+              </h1>
 
               <p class="topbar__subcopy">
-                {{ activeSection.caption }}
+                {{ topbarSubtitle }}
               </p>
             </div>
 
@@ -242,9 +236,9 @@ usePortalMotion(portalRoot)
               <button
                 type="button"
                 class="topbar-icon"
-                aria-label="Help"
+                aria-label="Account"
               >
-                <UIcon name="i-lucide-circle-help" />
+                <UIcon name="i-lucide-circle-user-round" />
               </button>
 
               <PortalRunQuickButton />
@@ -253,7 +247,7 @@ usePortalMotion(portalRoot)
                 class="topbar-avatar"
                 aria-hidden="true"
               >
-                SC
+                SG
               </div>
             </div>
           </header>
