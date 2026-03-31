@@ -19,7 +19,7 @@ export const usePortalMotion = (root: Ref<HTMLElement | null>) => {
     const hero = select('.page-hero, .section-heading')
     const topbar = select('.topbar, .topbar__headline')
     const stats = select('.stat-card')
-    const panels = select('.panel-card, .issue-card, .info-card, .timeline-item, .tab-chip, .action-card, .table-card, .chart-card, .watchlist-card, .watchlist-item, .legend-item')
+    const panels = select('.panel-card, .issue-card, .info-card, .timeline-item, .tab-chip, .action-card, .table-card, .chart-card, .watchlist-card, .watchlist-item, .legend-item, .gallery-sidebar, .gallery-toolbar, .gallery-card, .gallery-empty')
     const nav = select('.sidebar-nav__link')
     const runPanel = select('.run-panel, .topbar-run')
     const brand = select('.brand-block, .sidebar-store, .sidebar-profile')

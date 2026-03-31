@@ -42,7 +42,7 @@ const { data, refresh } = await useFetch<RunsResponse>('/api/runs', {
       />
 
       <PortalActionButton
-        icon="i-lucide-refresh-cw"
+        icon="i-fa6-solid-rotate-right"
         tone="secondary"
         size="md"
         @click="refresh()"
@@ -102,7 +102,7 @@ const { data, refresh } = await useFetch<RunsResponse>('/api/runs', {
             target="_blank"
             tone="secondary"
             size="sm"
-            icon="i-lucide-file-text"
+            icon="i-fa6-solid-file-lines"
           >
             Web summary
           </PortalActionButton>

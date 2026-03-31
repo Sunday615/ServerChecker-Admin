@@ -39,7 +39,7 @@ const { data, refresh } = await useFetch<ReportsResponse>('/api/reports/latest',
       />
 
       <PortalActionButton
-        icon="i-lucide-refresh-cw"
+        icon="i-fa6-solid-rotate-right"
         tone="secondary"
         size="md"
         @click="refresh()"
@@ -80,7 +80,7 @@ const { data, refresh } = await useFetch<ReportsResponse>('/api/reports/latest',
           target="_blank"
           tone="primary"
           size="md"
-          icon="i-lucide-file-text"
+          icon="i-fa6-solid-file-lines"
         >
           Open web summary
         </PortalActionButton>
@@ -104,7 +104,7 @@ const { data, refresh } = await useFetch<ReportsResponse>('/api/reports/latest',
             target="_blank"
             tone="secondary"
             size="sm"
-            icon="i-lucide-file-text"
+            icon="i-fa6-solid-file-lines"
           >
             HTML
           </PortalActionButton>
@@ -114,7 +114,7 @@ const { data, refresh } = await useFetch<ReportsResponse>('/api/reports/latest',
             target="_blank"
             tone="secondary"
             size="sm"
-            icon="i-lucide-image"
+            icon="i-fa6-solid-image"
           >
             PNG
           </PortalActionButton>

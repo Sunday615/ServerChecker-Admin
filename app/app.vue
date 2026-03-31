@@ -10,19 +10,19 @@ const navigationGroups = [
         label: 'Overview',
         caption: 'Threat posture',
         to: '/',
-        icon: 'i-lucide-layout-dashboard'
+        icon: 'i-fa6-solid-table-cells-large'
       },
       {
         label: 'Issues',
         caption: 'Service alerts',
         to: '/services',
-        icon: 'i-lucide-triangle-alert'
+        icon: 'i-fa6-solid-triangle-exclamation'
       },
       {
         label: 'Runs',
         caption: 'Execution log',
         to: '/runs',
-        icon: 'i-lucide-activity'
+        icon: 'i-fa6-solid-chart-line'
       }
     ]
   },
@@ -33,13 +33,19 @@ const navigationGroups = [
         label: 'Web Threats',
         caption: 'Browser targets',
         to: '/web-checks',
-        icon: 'i-lucide-shield-alert'
+        icon: 'i-fa6-solid-shield-halved'
+      },
+      {
+        label: 'Gallery',
+        caption: 'PNG room',
+        to: '/gallery',
+        icon: 'i-fa6-solid-images'
       },
       {
         label: 'Files',
         caption: 'Artifacts',
         to: '/reports',
-        icon: 'i-lucide-folder-open'
+        icon: 'i-fa6-solid-folder-open'
       }
     ]
   }
@@ -133,7 +139,7 @@ usePortalMotion(portalRoot)
               class="sidebar-toggle"
               aria-label="Sidebar options"
             >
-              <UIcon name="i-lucide-panel-left-close" />
+              <UIcon name="i-fa6-solid-bars" />
             </button>
           </div>
 
@@ -148,7 +154,7 @@ usePortalMotion(portalRoot)
                 <span>live threat monitoring</span>
               </div>
 
-              <UIcon name="i-lucide-chevrons-up-down" />
+              <UIcon name="i-fa6-solid-up-down" />
             </div>
           </div>
 
@@ -190,7 +196,7 @@ usePortalMotion(portalRoot)
               <span>dark response mode</span>
             </div>
 
-            <UIcon name="i-lucide-chevrons-up-down" />
+            <UIcon name="i-fa6-solid-up-down" />
           </div>
         </aside>
 
@@ -210,7 +216,7 @@ usePortalMotion(portalRoot)
 
             <div class="topbar__actions">
               <label class="topbar-search">
-                <UIcon name="i-lucide-search" />
+                <UIcon name="i-fa6-solid-magnifying-glass" />
                 <input
                   type="text"
                   :placeholder="searchPlaceholder"
@@ -222,7 +228,7 @@ usePortalMotion(portalRoot)
                 class="topbar-icon"
                 aria-label="Notifications"
               >
-                <UIcon name="i-lucide-bell" />
+                <UIcon name="i-fa6-solid-bell" />
               </button>
 
               <button
@@ -230,7 +236,7 @@ usePortalMotion(portalRoot)
                 class="topbar-icon"
                 aria-label="Settings"
               >
-                <UIcon name="i-lucide-settings-2" />
+                <UIcon name="i-fa6-solid-sliders" />
               </button>
 
               <button
@@ -238,7 +244,7 @@ usePortalMotion(portalRoot)
                 class="topbar-icon"
                 aria-label="Account"
               >
-                <UIcon name="i-lucide-circle-user-round" />
+                <UIcon name="i-fa6-solid-circle-user" />
               </button>
 
               <PortalRunQuickButton />

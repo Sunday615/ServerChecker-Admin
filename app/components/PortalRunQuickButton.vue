@@ -77,7 +77,7 @@ const buttonTone = computed(() => {
 })
 
 const buttonIcon = computed(() => {
-  return isRunActive.value ? 'i-lucide-square' : 'i-lucide-play'
+  return isRunActive.value ? 'i-fa6-solid-stop' : 'i-fa6-solid-play'
 })
 
 const triggerRun = async () => {

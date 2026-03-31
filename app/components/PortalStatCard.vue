@@ -13,7 +13,7 @@ const props = withDefaults(defineProps<{
   detail: '',
   detailTone: 'neutral',
   progress: 0,
-  icon: 'i-lucide-arrow-up-right',
+  icon: 'i-fa6-solid-arrow-up-right-from-square',
   accent: 'soft'
 })
 
@@ -35,7 +35,7 @@ const progressValue = computed(() => {
       </span>
 
       <span class="stat-card__menu">
-        <UIcon name="i-lucide-more-horizontal" />
+        <UIcon name="i-fa6-solid-ellipsis" />
       </span>
     </div>
 

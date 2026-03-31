@@ -202,7 +202,7 @@ const stopRun = async () => {
 
     <div class="run-panel__actions">
       <PortalActionButton
-        icon="i-lucide-play"
+        icon="i-fa6-solid-play"
         tone="primary"
         size="md"
         :loading="isSubmitting"
@@ -215,7 +215,7 @@ const stopRun = async () => {
 
       <PortalActionButton
         v-if="isRunActive"
-        icon="i-lucide-square"
+        icon="i-fa6-solid-stop"
         tone="danger"
         size="md"
         :loading="isStopping || state.status === 'STOPPING'"

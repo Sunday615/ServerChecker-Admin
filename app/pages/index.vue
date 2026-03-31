@@ -242,7 +242,7 @@ const overviewCards = computed<MetricCard[]>(() => {
       detail: `${data.value.failingServiceCount} infra • ${data.value.failingWebCount} web`,
       detailTone: totalIssues.value ? 'danger' : 'success',
       progress: totalMonitors.value ? Math.min(Math.round((totalIssues.value / totalMonitors.value) * 100), 100) : 0,
-      icon: 'i-lucide-shield-alert',
+      icon: 'i-fa6-solid-shield-halved',
       accent: 'primary'
     },
     {
@@ -252,7 +252,7 @@ const overviewCards = computed<MetricCard[]>(() => {
       detail: `${data.value.failingServiceCount} service channels exposed`,
       detailTone: data.value.failingServiceCount ? 'danger' : 'success',
       progress: serviceRisk.value,
-      icon: 'i-lucide-server-crash',
+      icon: 'i-fa6-solid-server',
       accent: 'soft'
     },
     {
@@ -262,7 +262,7 @@ const overviewCards = computed<MetricCard[]>(() => {
       detail: `${data.value.failingWebCount} browser flows flagged`,
       detailTone: data.value.failingWebCount ? 'danger' : 'success',
       progress: webRisk.value,
-      icon: 'i-lucide-globe-lock',
+      icon: 'i-fa6-solid-globe',
       accent: 'soft'
     },
     {
@@ -272,7 +272,7 @@ const overviewCards = computed<MetricCard[]>(() => {
       detail: `${totalPassing.value}/${Math.max(totalMonitors.value, 0)} checks stable • ${exposedSiteCount.value} hot sites`,
       detailTone: totalIssues.value ? 'neutral' : 'success',
       progress: overallHealth.value,
-      icon: 'i-lucide-badge-check',
+      icon: 'i-fa6-solid-circle-check',
       accent: 'soft'
     }
   ]
@@ -283,7 +283,7 @@ const incidentRows = computed<IncidentRow[]>(() => {
     id: `service-${item.service_result_id}`,
     kind: 'service' as const,
     kindLabel: 'Service',
-    icon: 'i-lucide-server',
+    icon: 'i-fa6-solid-server',
     title: item.service_name,
     note: item.connection_error || `${item.host_display_name || item.host_address} • ${item.check_profile_name || 'default profile'}`,
     site: item.site_name,
@@ -299,7 +299,7 @@ const incidentRows = computed<IncidentRow[]>(() => {
     id: `web-${item.web_result_id}`,
     kind: 'web' as const,
     kindLabel: 'Web',
-    icon: 'i-lucide-globe',
+    icon: 'i-fa6-solid-globe',
     title: item.target_name,
     note: item.message || item.final_url || item.target_url,
     site: item.site_name,
@@ -386,7 +386,7 @@ onBeforeUnmount(() => {
         <PortalActionButton
           tone="primary"
           size="md"
-          icon="i-lucide-refresh-cw"
+          icon="i-fa6-solid-rotate-right"
           @click="refreshAll"
         >
           Refresh data
@@ -398,7 +398,7 @@ onBeforeUnmount(() => {
           target="_blank"
           tone="secondary"
           size="md"
-          icon="i-lucide-folder-open"
+          icon="i-fa6-solid-folder-open"
         >
           Open latest file
         </PortalActionButton>
@@ -408,7 +408,7 @@ onBeforeUnmount(() => {
           to="/reports"
           tone="secondary"
           size="md"
-          icon="i-lucide-files"
+          icon="i-fa6-solid-folder-tree"
         >
           View files
         </PortalActionButton>
@@ -459,7 +459,7 @@ onBeforeUnmount(() => {
             to="/services"
             tone="ghost"
             size="sm"
-            icon="i-lucide-triangle-alert"
+            icon="i-fa6-solid-triangle-exclamation"
           >
             Service alerts
           </PortalActionButton>
@@ -468,7 +468,7 @@ onBeforeUnmount(() => {
             to="/web-checks"
             tone="ghost"
             size="sm"
-            icon="i-lucide-globe"
+            icon="i-fa6-solid-globe"
           >
             Web threats
           </PortalActionButton>
@@ -477,7 +477,7 @@ onBeforeUnmount(() => {
             to="/reports"
             tone="ghost"
             size="sm"
-            icon="i-lucide-folder-open"
+            icon="i-fa6-solid-folder-open"
           >
             Files
           </PortalActionButton>
@@ -556,7 +556,7 @@ onBeforeUnmount(() => {
                   target="_blank"
                   tone="secondary"
                   size="sm"
-                  icon="i-lucide-arrow-up-right"
+                  icon="i-fa6-solid-arrow-up-right-from-square"
                 >
                   Open
                 </PortalActionButton>

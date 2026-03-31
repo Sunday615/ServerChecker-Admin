@@ -89,7 +89,7 @@ const failingCount = computed(() => data.value.items.filter(item => item.status 
             target="_blank"
             tone="secondary"
             size="sm"
-            icon="i-lucide-file-text"
+            icon="i-fa6-solid-file-lines"
           >
             HTML
           </PortalActionButton>
@@ -99,7 +99,7 @@ const failingCount = computed(() => data.value.items.filter(item => item.status 
             target="_blank"
             tone="secondary"
             size="sm"
-            icon="i-lucide-image"
+            icon="i-fa6-solid-image"
           >
             PNG
           </PortalActionButton>

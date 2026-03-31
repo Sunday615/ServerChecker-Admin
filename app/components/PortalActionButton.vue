@@ -78,7 +78,7 @@ const componentAttrs = computed(() => {
 
 const leadingIcon = computed(() => {
   if (props.loading) {
-    return 'i-lucide-loader-circle'
+    return 'i-fa6-solid-spinner'
   }
 
   return props.icon
