@@ -106,15 +106,21 @@ const deriveHtmlCandidatesForPng = (imagePath: string) => {
   const outputRoot = resolve(checkerOutputRoot)
   const relativeImagePath = relative(outputRoot, resolve(imagePath)).replace(/\\/g, '/')
   const candidates: string[] = []
+  let regenerateMode: 'never' | 'missing-only' | 'always' = 'never'
 
   if (relativeImagePath.startsWith('screenshots/services/')) {
     const suffix = relativeImagePath.slice('screenshots/services/'.length).replace(/\.png$/i, '.html')
     candidates.push(resolve(outputRoot, 'reports/services', suffix))
+    regenerateMode = 'always'
   }
 
   if (relativeImagePath.startsWith('webshots/')) {
     const suffix = relativeImagePath.slice('webshots/'.length).replace(/\.png$/i, '.html')
     candidates.push(resolve(outputRoot, 'web_reports', suffix))
+
+    if (regenerateMode === 'never') {
+      regenerateMode = 'missing-only'
+    }
   }
 
   if (relativeImagePath.startsWith('screenshots/')) {
@@ -125,18 +131,40 @@ const deriveHtmlCandidatesForPng = (imagePath: string) => {
     if (site && fileName.endsWith(`__${site}__server_check_report.png`)) {
       const htmlFileName = fileName.replace(`__${site}__server_check_report.png`, '__server_check_report.html')
       candidates.push(resolve(outputRoot, 'reports', site, htmlFileName))
+      regenerateMode = 'always'
     }
   }
 
-  return Array.from(new Set(candidates))
+  return {
+    candidates: Array.from(new Set(candidates)),
+    regenerateMode
+  }
 }
 
-const regeneratePngFromHtml = async (htmlPath: string, imagePath: string) => {
-  const config = useRuntimeConfig()
-  const { checkerRoot } = getCheckerPaths()
-  const pythonBin = String(config.checkerPythonBin || 'python').trim() || 'python'
-  const scriptPath = resolve(checkerRoot, 'tools', 'regenerate_screenshot.py')
+const resolvePythonBins = (checkerRoot: string, configuredBin: string) => {
+  const venvPython = process.platform === 'win32'
+    ? resolve(checkerRoot, '.venv', 'Scripts', 'python.exe')
+    : resolve(checkerRoot, '.venv', 'bin', 'python')
+  const venvPython3 = process.platform === 'win32'
+    ? resolve(checkerRoot, '.venv', 'Scripts', 'python.exe')
+    : resolve(checkerRoot, '.venv', 'bin', 'python3')
 
+  return Array.from(new Set([
+    configuredBin.trim(),
+    venvPython,
+    venvPython3,
+    'python3',
+    'python'
+  ].filter(Boolean)))
+}
+
+const runScreenshotRegeneration = async (
+  pythonBin: string,
+  scriptPath: string,
+  checkerRoot: string,
+  htmlPath: string,
+  imagePath: string
+) => {
   return await new Promise<boolean>((resolvePromise) => {
     const child = spawn(pythonBin, [scriptPath, htmlPath, imagePath], {
       cwd: checkerRoot,
@@ -147,6 +175,21 @@ const regeneratePngFromHtml = async (htmlPath: string, imagePath: string) => {
     child.on('error', () => resolvePromise(false))
     child.on('close', (code) => resolvePromise(code === 0))
   })
+}
+
+const regeneratePngFromHtml = async (htmlPath: string, imagePath: string) => {
+  const config = useRuntimeConfig()
+  const { checkerRoot } = getCheckerPaths()
+  const pythonBins = resolvePythonBins(checkerRoot, String(config.checkerPythonBin || ''))
+  const scriptPath = resolve(checkerRoot, 'tools', 'regenerate_screenshot.py')
+
+  for (const pythonBin of pythonBins) {
+    if (await runScreenshotRegeneration(pythonBin, scriptPath, checkerRoot, htmlPath, imagePath)) {
+      return true
+    }
+  }
+
+  return false
 }
 
 export default defineEventHandler(async (event) => {
@@ -171,12 +214,20 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  if (!resolved && filePath.toLowerCase().endsWith('.png')) {
-    const targetImagePath = candidates[0] || ''
-    const htmlCandidates = deriveHtmlCandidatesForPng(targetImagePath || filePath)
+  if (filePath.toLowerCase().endsWith('.png')) {
+    const targetImagePath = candidates[0] || resolved || ''
+    const { candidates: htmlCandidates, regenerateMode } = deriveHtmlCandidatesForPng(targetImagePath || filePath)
     const resolvedHtmlPath = await findExistingCandidate(htmlCandidates)
+    const shouldRegenerate = Boolean(
+      resolvedHtmlPath
+      && targetImagePath
+      && (
+        regenerateMode === 'always'
+        || (regenerateMode === 'missing-only' && !resolved)
+      )
+    )
 
-    if (resolvedHtmlPath && targetImagePath) {
+    if (shouldRegenerate) {
       const regenerated = await regeneratePngFromHtml(resolvedHtmlPath, targetImagePath)
 
       if (regenerated && await pathExists(targetImagePath)) {
